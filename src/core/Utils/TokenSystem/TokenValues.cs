@@ -27,5 +27,12 @@
         public const string ClosedBracket = "ClosedBracket"; 
         public const string OpenBraces = "OpenBraces"; 
         public const string ClosedBraces = "ClosedBraces";
+
+        public const string integer = "int";
+        public const string boolean = "bool";
+        public const string color = "color";
+        public const string func = "function";
+        public const string Return = "return";
+        public const string Void = "void";
     }
 }

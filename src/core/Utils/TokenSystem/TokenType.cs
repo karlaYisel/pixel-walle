@@ -5,6 +5,7 @@
         Number,
         Boolean,
         Identifier,
+        Keywords,
         Color,
         Symbol
     }

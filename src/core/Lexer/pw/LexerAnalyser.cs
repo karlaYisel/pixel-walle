@@ -42,6 +42,13 @@ namespace Core.Lexer.pw
 
 
                     __LexicalProcess.RegisterColor("\"", "\"");
+
+                    __LexicalProcess.RegisterKeyword("int", TokenValues.integer);
+                    __LexicalProcess.RegisterKeyword("bool", TokenValues.boolean);
+                    __LexicalProcess.RegisterKeyword("color", TokenValues.color);
+                    __LexicalProcess.RegisterKeyword("func", TokenValues.func);
+                    __LexicalProcess.RegisterKeyword("return", TokenValues.Return);
+                    __LexicalProcess.RegisterKeyword("void", TokenValues.Void);
                 }
 
                 return __LexicalProcess;

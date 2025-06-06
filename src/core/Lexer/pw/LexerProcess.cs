@@ -7,6 +7,7 @@ namespace Core.Lexer.pw
     {
         Dictionary<string, string> operators = new Dictionary<string, string>();
         Dictionary<string, string> colors = new Dictionary<string, string>();
+        Dictionary<string, string> keywords = new Dictionary<string, string>();
 
         public void RegisterOperator(string op, string tokenValue)
         {
@@ -16,6 +17,11 @@ namespace Core.Lexer.pw
         public void RegisterColor(string start, string end)
         {
             colors[start] = end;
+        }
+
+        public void RegisterKeyword(string key, string tokenValue)
+        {
+            keywords[key] = tokenValue;
         }
 
         private bool MatchSymbol(TokenReader stream, List<Token> tokens, CodeLocation Location)
@@ -45,6 +51,17 @@ namespace Core.Lexer.pw
             return false;
         }
 
+        private bool MatchKeyword(TokenReader stream, List<Token> tokens, List<CompilingError> errors, CodeLocation Location)
+        {
+            foreach (var key in keywords.Keys.OrderByDescending(k => k.Length))
+                if (stream.Match(key))
+                {
+                    tokens.Add(new Token(keywords[key], TokenType.Keywords, Location));
+                    return true;
+                }
+            return false;
+        }
+
         public IEnumerable<Token> GetTokens(string fileName, string code, List<CompilingError> errors)
         {
             List<Token> tokens = new List<Token>();
@@ -70,6 +87,9 @@ namespace Core.Lexer.pw
                     continue;
                 }
 
+                if (MatchKeyword(stream, tokens, errors, Location))
+                    continue;
+
                 if (stream.ReadID(out value))
                 {
                     tokens.Add(new Token(value, TokenType.Identifier, Location));
@@ -89,7 +109,7 @@ namespace Core.Lexer.pw
                     continue;
 
                 var unkOp = stream.ReadAny();
-                errors.Add(new CompilingError(Location, ErrorCode.Unknown, unkOp.ToString()));
+                errors.Add(new CompilingError(Location, ErrorCode.Unknown, $"'{unkOp.ToString()}'"));
             }
 
             return tokens;
@@ -167,7 +187,7 @@ namespace Core.Lexer.pw
 
             public bool ValidIdCharacter(char c, bool begining)
             {
-                return begining ? char.IsLetter(c) : char.IsLetterOrDigit(c) || c == '-';
+                return begining ? char.IsLetter(c) : char.IsLetterOrDigit(c) || c == '_';
             }
 
             public bool ReadID(out string id)

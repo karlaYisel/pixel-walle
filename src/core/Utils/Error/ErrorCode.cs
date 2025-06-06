@@ -6,5 +6,8 @@
         Expected,
         Invalid,
         Unknown,
+        InvalidFunctionArgumentsCount,
+        InvalidFunctionArguments,
+        UnableToExecuteFuntion,
     }
 }
