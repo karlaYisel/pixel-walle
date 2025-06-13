@@ -15,7 +15,7 @@ namespace Core.AST.Expressions.Atom
         public FunctionExpression(Function function, CodeLocation location, out bool validFunction) : base(location)
         {
             validFunction = false;
-            if (function is NewFunction || function is Function<T> || (typeof(T) == typeof(IntegerOrBool) && (function is Function<int> || function is Function<bool>)))
+            if (function is NewFunction || typeof(T) == typeof(object) || function is Function<T> || (typeof(T) == typeof(IntegerOrBool) && (function is Function<int> || function is Function<bool>)))
             {
                 Function = function;
                 validFunction = true;

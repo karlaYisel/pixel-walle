@@ -30,6 +30,7 @@
 
         public const string integer = "int";
         public const string boolean = "bool";
+        public const string String = "string";
         public const string color = "color";
         public const string func = "function";
         public const string Return = "return";

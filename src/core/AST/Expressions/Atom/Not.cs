@@ -27,7 +27,7 @@ namespace Core.AST.Expressions.Atom
             }
             return false;
         }
-        public static IntegerOrBool Evaluate(Literal<IntegerOrBool> expression)
+        public IntegerOrBool Evaluate(Literal<IntegerOrBool> expression)
         { 
             return !expression.Evaluate();
         }

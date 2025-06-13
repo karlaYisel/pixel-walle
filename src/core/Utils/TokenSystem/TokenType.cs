@@ -6,7 +6,7 @@
         Boolean,
         Identifier,
         Keywords,
-        Color,
+        String,
         Symbol
     }
 }

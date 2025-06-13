@@ -6,7 +6,7 @@ namespace Core.Lexer.pw
     public class LexerProcess : ILexerProcess
     {
         Dictionary<string, string> operators = new Dictionary<string, string>();
-        Dictionary<string, string> colors = new Dictionary<string, string>();
+        Dictionary<string, string> stringcolor = new Dictionary<string, string>();
         Dictionary<string, string> keywords = new Dictionary<string, string>();
 
         public void RegisterOperator(string op, string tokenValue)
@@ -14,9 +14,9 @@ namespace Core.Lexer.pw
             operators[op] = tokenValue;
         }
 
-        public void RegisterColor(string start, string end)
+        public void RegisterString(string start, string end)
         {
-            colors[start] = end;
+            stringcolor[start] = end;
         }
 
         public void RegisterKeyword(string key, string tokenValue)
@@ -35,16 +35,16 @@ namespace Core.Lexer.pw
             return false;
         }
 
-        private bool MatchColor(TokenReader stream, List<Token> tokens, List<CompilingError> errors, CodeLocation Location)
+        private bool MatchString(TokenReader stream, List<Token> tokens, List<CompilingError> errors, CodeLocation Location)
         {
-            foreach (var start in colors.Keys.OrderByDescending(k => k.Length))
+            foreach (var start in stringcolor.Keys.OrderByDescending(k => k.Length))
             {
                 string text;
                 if (stream.Match(start))
                 {
-                    if (!stream.ReadUntil(colors[start], out text))
-                        errors.Add(new CompilingError(Location, ErrorCode.Expected, colors[start]));
-                    tokens.Add(new Token(text, TokenType.Color, Location));
+                    if (!stream.ReadUntil(stringcolor[start], out text))
+                        errors.Add(new CompilingError(Location, ErrorCode.Expected, stringcolor[start]));
+                    tokens.Add(new Token(text, TokenType.String, Location));
                     return true;
                 }
             }
@@ -105,7 +105,7 @@ namespace Core.Lexer.pw
                     continue;
                 }
 
-                if (MatchColor(stream, tokens, errors, Location))
+                if (MatchString(stream, tokens, errors, Location))
                     continue;
 
                 var unkOp = stream.ReadAny();

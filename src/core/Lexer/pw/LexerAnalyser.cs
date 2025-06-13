@@ -41,10 +41,11 @@ namespace Core.Lexer.pw
                     __LexicalProcess.RegisterOperator("]", TokenValues.ClosedBraces);
 
 
-                    __LexicalProcess.RegisterColor("\"", "\"");
+                    __LexicalProcess.RegisterString("\"", "\"");
 
                     __LexicalProcess.RegisterKeyword("int", TokenValues.integer);
                     __LexicalProcess.RegisterKeyword("bool", TokenValues.boolean);
+                    __LexicalProcess.RegisterKeyword("string", TokenValues.String);
                     __LexicalProcess.RegisterKeyword("color", TokenValues.color);
                     __LexicalProcess.RegisterKeyword("func", TokenValues.func);
                     __LexicalProcess.RegisterKeyword("return", TokenValues.Return);

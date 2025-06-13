@@ -51,6 +51,7 @@ namespace Core.Parser.pw
                     __Parser.RegisterType("void", typeof(Core.Utils.SystemClass.Void));
                     __Parser.RegisterType("int", typeof(int));
                     __Parser.RegisterType("bool", typeof(bool));
+                    __Parser.RegisterType("string", typeof(string));
                     __Parser.RegisterType("color", typeof(System.Drawing.Color));
                 }
 

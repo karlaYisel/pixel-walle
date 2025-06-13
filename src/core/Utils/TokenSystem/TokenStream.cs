@@ -14,6 +14,11 @@ namespace Core.Utils.TokenSystem
             Position = 0;
         }
 
+        public void MoveTo(int k)
+        {
+            Position = k;
+        }
+
         public void MoveNext(int k)
         {
             Position += k;

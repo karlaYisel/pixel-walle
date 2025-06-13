@@ -9,23 +9,23 @@ using Core.Utils.TokenSystem;
 
 namespace Core.AST.Expressions.Binary
 {
-    public class Eql : BinaryExpression<IntegerOrBool>
+    public class Plus : BinaryExpression<object>
     {
-        public Eql(CodeLocation location) : base(location) { }
+        public Plus(CodeLocation location) : base(location) { }
 
-        public override bool TryEvaluate(out IntegerOrBool result)
+        public override bool TryEvaluate(out object result)
         {
             result = 0;
-            if (Left is Literal<IntegerOrBool> left && Right is Literal<IntegerOrBool> right)
+            if (Left is Literal<object> left && Right is Literal<object> right)
             {
                 result = Evaluate(left, right);
                 return true;
             }
             return false;
         }
-        public override IntegerOrBool Evaluate(Literal<IntegerOrBool> left, Literal<IntegerOrBool> right)
+        public override object Evaluate(Literal<object> left, Literal<object> right)
         {
-            return (int)left.Evaluate() == (int)right.Evaluate();
+            throw new NotImplementedException();
         }
     }
 }

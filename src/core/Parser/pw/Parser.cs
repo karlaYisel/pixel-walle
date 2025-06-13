@@ -2,11 +2,10 @@
 using Core.Utils.Error;
 using Core.Utils.TokenSystem;
 using Core.AST.Expressions.Atom;
-using System.Globalization;
 using Core.Utils.SystemClass;
 using Core.AST.Expressions.Binary;
 using Core.AST.Functions;
-using System.IO;
+using System.Globalization;
 
 namespace Core.Parser.pw
 {
@@ -29,7 +28,7 @@ namespace Core.Parser.pw
 
         public ProgramAST ParseProgram(string fileName, TokenStream code, List<CompilingError> errors)
         {
-            ProgramAST program = new ProgramAST(fileName);
+            ProgramAST program = new ProgramAST(fileName, errors);
 
             if (!code.CanLookAhead())
                 return program;
@@ -41,7 +40,7 @@ namespace Core.Parser.pw
 
         public Script ParseScript(string fileName, TokenStream code, List<CompilingError> errors)
         { 
-            Script script = new Script(fileName);
+            Script script = new Script(fileName, errors);
             
             if (!code.CanLookAhead()) return script;
 
@@ -51,8 +50,6 @@ namespace Core.Parser.pw
             {
                 errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Expected, "Function return type"));
             }
-            else if (code.LookAhead().Value.Equals("color")) 
-                errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Invalid, "Function return type"));
             else
             {
                 string type = code.LookAhead().Value;
@@ -66,7 +63,7 @@ namespace Core.Parser.pw
 
             if (!code.Next(TokenType.Identifier))
                 errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Expected, "Function name"));
-            else script = new Script(code.LookAhead().Value);
+            else script = new Script(code.LookAhead().Value, errors);
             if(typeReturn is not null) script.SetReturnType(typeReturn);
 
             if (!code.Next(TokenValues.OpenBracket))
@@ -84,7 +81,15 @@ namespace Core.Parser.pw
                     }
 
                     if (!types.ContainsKey(code.LookAhead(1).Value))
+                    {
                         errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Expected, "Argument type"));
+                        typeList.Add(types["void"]);
+                    }
+                    else if(code.Next(TokenValues.Void))
+                    {
+                        errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Invalid, "Argument type"));
+                        typeList.Add(types["void"]);
+                    }
                     else
                     {
                         code.Next();
@@ -92,9 +97,16 @@ namespace Core.Parser.pw
                     }
 
                     if (!code.Next(TokenType.Identifier))
+                    {
                         errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Expected, "Argument name"));
+                        nameList.Add("");
+                    }
                     else
+                    {
+                        if (nameList.Contains(code.LookAhead().Value)) 
+                            errorsTemp.Add(new CompilingError(code.LookAhead().Location, ErrorCode.RepeatedArgumnet, "Argument name already defined"));
                         nameList.Add(code.LookAhead().Value);
+                    }
 
                     if (code.Next(TokenValues.ClosedBracket)) break;
                     if (!code.CanLookAhead(1) || code.LookAhead().Value.Equals("StatementSeparator"))
@@ -117,7 +129,7 @@ namespace Core.Parser.pw
             }
             else
             {
-                errors.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Expected, "Function Declaration"));
+                errors.Add(new CompilingError(code.LookAhead().Location, ErrorCode.Missing, "Function Declaration"));
                 code.MoveBack(1);
             }
 
@@ -151,16 +163,19 @@ namespace Core.Parser.pw
                     continue;
                 }
 
-                string label;
-                if (stream.ParseLabel(errors, out label))
-                {
-                    program.AddLabel(label);
-                    continue;
-                }
-
                 if (program is Script scrt && stream.ParseReturn(errors, out node))
                 {
                     if (node is not null) program.AddNode(node);
+                    continue;
+                }
+
+                string label;
+                CodeLocation location = code.LookAhead().Location;
+                if (stream.ParseLabel(errors, out label))
+                {
+                    if(program.IsLabel(label))
+                        errors.Add(new CompilingError(location, ErrorCode.Invalid, "Label already defined"));
+                    program.AddLabel(label);
                     continue;
                 }
 
@@ -190,9 +205,7 @@ namespace Core.Parser.pw
                 Return = null;
                 if (!stream.Next(TokenValues.Return)) return false;
                 Return re = new Return(stream.LookAhead().Location);
-                Expression? ex = ParseExpression(errors);
-                if (ex is null) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "Valid Expression"));
-                else re.SetExpression(ex);
+                re.SetExpression(ParseExpression(errors));
                 ParseStatementSeparator(errors);
                 Return =  re;
                 return true;
@@ -212,9 +225,9 @@ namespace Core.Parser.pw
                 else go.SetIdentifier(stream.LookAhead().Value);
                 if (!stream.Next(TokenValues.ClosedBraces)) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "]"));
                 if (!stream.Next(TokenValues.OpenBracket)) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "("));
-                Expression? exp = ParseExpression(errors);
-                if (exp is not Expression<IntegerOrBool> exps) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "Valid Boolean Expression"));
-                else go.SetExpression(exps);
+                Expression<IntegerOrBool>? exp = ParseExpressionLv1(null, errors);
+                if (exp is null) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "Valid Boolean Expression"));
+                else go.SetExpression(exp);
                 if (!stream.Next(TokenValues.ClosedBracket)) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, ")"));
                 ParseStatementSeparator(errors);
                 goTo = go;
@@ -244,7 +257,8 @@ namespace Core.Parser.pw
                 Assign assign = new Assign(stream.LookAhead(-1).Location, identifier);
                 Expression? exp = ParseExpression(errors);
                 if (exp is null) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "Valid Expression"));
-                else assign.SetExpression(exp);
+                else if (exp is Literal<System.Drawing.Color> exps) exp = new Literal<string>(exps.Evaluate().Name, exps.Location);
+                assign.SetExpression(exp);
                 ParseStatementSeparator(errors);
                 assg =  assign;
                 return true;
@@ -340,9 +354,74 @@ namespace Core.Parser.pw
 
             private Expression? ParseExpression(List<CompilingError> errors)
             {
-                Expression? exp = ParseExpressionLv1(null, errors);
-                if (exp is not null) return exp;
-                return ParseColor(errors);
+                int position = stream.Position;
+                Expression? exp = ParseNonTypedExpression(null, errors);
+                int lPosition = stream.Position;
+                stream.MoveTo(position);
+                Expression? nExp = ParseExpressionLv1(null, errors);
+                if (lPosition < stream.Position)
+                {
+                    exp = nExp;
+                    lPosition = stream.Position;
+                }
+                stream.MoveTo(position);
+                nExp = ParseStringExpression(null, errors);
+                if (lPosition < stream.Position)
+                {
+                    exp = nExp;
+                    lPosition = stream.Position;
+                }
+                stream.MoveTo(position);
+                nExp = ParseColor(errors);
+                if (lPosition == position + 1 && nExp is not null)
+                    return nExp;
+                stream.MoveTo(lPosition);
+                return exp;
+            }
+
+            private Expression<object>? ParseNonTypedExpression(Expression<object>? left, List<CompilingError> errors)
+            {
+                Expression<object>? newLeft = ParseObjectLiteral(left, errors);
+                Expression<object>? exp = ParseObjectPlus(newLeft, errors);
+                return exp;
+            }
+
+            private Expression<object>? ParseObjectLiteral(Expression<object>? left, List<CompilingError> errors)
+            {
+                int position = stream.Position;
+                Function? exp = ParseFunction(errors);
+                if (exp is not null)
+                {
+                    FunctionExpression<object> func = new FunctionExpression<object>(exp, stream.LookAhead().Location, out bool valid);
+                    if (!valid)
+                    {
+                        stream.MoveTo(position);
+                        return null;
+                    }
+                    return func;
+                }
+                if (!stream.Next(TokenType.Identifier))
+                    return null;
+                return new Variable<object>(stream.LookAhead().Value, stream.LookAhead().Location);
+            }
+
+            private Expression<object>? ParseObjectPlus(Expression<object>? left, List<CompilingError> errors)
+            {
+                if (left is null || !stream.Next(TokenValues.Add))
+                    return left;
+
+                Plus binary = new Plus(stream.LookAhead().Location);
+
+                binary.SetLeftExpression(left);
+
+                Expression<object>? right = ParseObjectLiteral(null, errors);
+                if (right == null)
+                {
+                    stream.MoveBack(1);
+                    return null;
+                }
+                binary.SetRigthExpression(right);
+                return ParseObjectPlus(binary, errors);
             }
 
             private Expression<IntegerOrBool>? ParseExpressionLv1(Expression<IntegerOrBool>? left, List<CompilingError> errors)
@@ -718,7 +797,13 @@ namespace Core.Parser.pw
                 if (!stream.Next(TokenValues.Sub))
                     return null;
                 Minus unary = new Minus(stream.LookAhead().Location);
-                unary.SetExpression(ParseExpressionLv8(null, errors));
+                Expression<IntegerOrBool>? exp = ParseExpressionLv8(null, errors);
+                if (exp is null)
+                {
+                    stream.MoveBack(1);
+                    return null;
+                }
+                unary.SetExpression(exp);
                 return unary;
             }
 
@@ -729,7 +814,7 @@ namespace Core.Parser.pw
                 Expression<IntegerOrBool>? exp = ParseExpressionLv1(null, errors);
                 if (exp is null)
                 {
-                    errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Invalid, "("));
+                    stream.MoveBack(1);
                     return null;
                 }
                 if (!stream.Next(TokenValues.ClosedBracket))
@@ -741,11 +826,16 @@ namespace Core.Parser.pw
 
             private FunctionExpression<IntegerOrBool>? ParseFunctionIntegerOrBool(List<CompilingError> errors)
             {
+                int position = stream.Position;
                 Function? exp = ParseFunction(errors);
                 if (exp is null)
                     return null;
                 FunctionExpression<IntegerOrBool> func = new FunctionExpression<IntegerOrBool>(exp, stream.LookAhead().Location, out bool valid);
-                if (!valid) errors.Add(new CompilingError(exp.Location, ErrorCode.Invalid, $"The given funtion is not valid as an integer or boolean expression."));
+                if (!valid)
+                {
+                    stream.MoveTo(position);
+                    return null;
+                }
                 return func;
             }
 
@@ -767,19 +857,22 @@ namespace Core.Parser.pw
             {
                 if (!stream.Next(TokenType.Number))
                     return null;
-                return new Literal<IntegerOrBool>(int.Parse(stream.LookAhead().Value), stream.LookAhead().Location);
+                if (!int.TryParse(stream.LookAhead().Value, out int result))
+                    errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Invalid, "Integral constant"));
+                return new Literal<IntegerOrBool>(result, stream.LookAhead().Location);
             }
 
             private Literal<System.Drawing.Color>? ParseColor(List<CompilingError> errors)
             {
-                if (!stream.Next(TokenType.Color))
+                if (!stream.Next(TokenType.String))
                     return null;
                 string value = stream.LookAhead(0).Value.ToLower();
                 System.Drawing.Color color = System.Drawing.Color.FromArgb(0);
                 if (colors.ContainsKey(value)) color = colors[value];
                 else if (!IsHexadecimalColor(value, out color))
                 {
-                    errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Invalid, $"{value} as Color Name"));
+                    stream.MoveBack(1);
+                    return null;
                 }
                 return new Literal<System.Drawing.Color>(color, stream.LookAhead().Location);
             }
@@ -795,6 +888,83 @@ namespace Core.Parser.pw
                 if (!int.TryParse(argb, NumberStyles.HexNumber, null, out intArgb)) return false;
                 color = System.Drawing.Color.FromArgb(intArgb);
                 return true;
+            }
+
+            private Expression<string>? TryFirstNonNullString(List<CompilingError> errors, params Func<List<CompilingError>, Expression<string>?>[] funcs)
+            {
+                foreach (var func in funcs)
+                {
+                    var result = func(errors);
+                    if (result is not null) return result;
+                }
+                return null;
+            }
+
+            private Expression<string>? ParseStringExpression(Expression<string>? left, List<CompilingError> errors)
+            {
+                Expression<string>? newLeft = ParseStringLiteral(left, errors);
+                Expression<string>? exp = ParseConct(newLeft, errors);
+                return exp;
+            }
+
+            private Expression<string>? ParseStringLiteral(Expression<string>? left, List<CompilingError> errors)
+            {
+                return TryFirstNonNullString(errors, ParseFunctionString, ParseVariableString, ParseColorAsString, ParseString);
+            }
+
+            private Expression<string>? ParseConct(Expression<string>? left, List<CompilingError> errors)
+            {
+                if (left is null || !stream.Next(TokenValues.Add))
+                    return left;
+
+                Conct binary = new Conct(stream.LookAhead().Location);
+
+                binary.SetLeftExpression(left);
+
+                Expression<string>? right = ParseStringLiteral(null, errors);
+                if (right == null)
+                {
+                    stream.MoveBack(1);
+                    return null;
+                }
+                binary.SetRigthExpression(right);
+                return ParseStringExpression(binary, errors);
+            }
+
+            private FunctionExpression<string>? ParseFunctionString(List<CompilingError> errors) 
+            {
+                int position = stream.Position;
+                Function? exp = ParseFunction(errors);
+                if (exp is null)
+                    return null;
+                FunctionExpression<string> func = new FunctionExpression<string>(exp, stream.LookAhead().Location, out bool valid);
+                if (!valid)
+                {
+                    stream.MoveTo(position);
+                    return null;
+                }
+                return func;
+            }
+
+            private Variable<string>? ParseVariableString(List<CompilingError> errors)
+            {
+                if (!stream.Next(TokenType.Identifier))
+                    return null;
+                return new Variable<string>(stream.LookAhead().Value, stream.LookAhead().Location);
+            }
+
+            private Literal<string>? ParseColorAsString(List<CompilingError> errors)
+            {
+                Literal<System.Drawing.Color>? color = ParseColor(errors);
+                if (color is null) return null;
+                return new Literal<string>(color.Evaluate().Name, color.Location);
+            }
+
+            private Literal<string>? ParseString(List<CompilingError> errors)
+            {
+                if (!stream.Next(TokenType.String))
+                    return null;
+                return new Literal<string>(stream.LookAhead().Value, stream.LookAhead().Location);
             }
         }
     }

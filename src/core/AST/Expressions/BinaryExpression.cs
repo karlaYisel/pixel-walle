@@ -1,12 +1,13 @@
 ﻿using Core.AST.Expressions.Atom;
+using Core.Utils.SystemClass;
 using Core.Utils.TokenSystem;
 
 namespace Core.AST.Expressions
 {
     public abstract class BinaryExpression<T> : Expression<T>
     {
-        public Expression<T>? Right { get; private set; }
-        public Expression<T>? Left { get; private set; }
+        public Expression<T>? Right { get; private set; } = null;
+        public Expression<T>? Left { get; private set; } = null;
         public BinaryExpression(CodeLocation location) : base(location)
         {
         }
@@ -24,6 +25,7 @@ namespace Core.AST.Expressions
             Right = rigth;
         }
         public abstract bool TryEvaluate(out T result);
+        public abstract T Evaluate(Literal<T> left, Literal<T> right);
         public override Expression<T> Reduce()
         {
             if(Left is not null) Left = Left.Reduce();

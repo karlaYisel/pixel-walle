@@ -12,7 +12,7 @@ namespace Core.AST
     {
         public Expression? Expression { get; private set; }
         public Return(CodeLocation location) : base(location) { }
-        public void SetExpression(Expression exp)
+        public void SetExpression(Expression? exp)
         {
             Expression = exp;
         }

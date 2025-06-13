@@ -40,5 +40,11 @@ namespace Core.Utils.SystemClass
         {
             return new IntegerOrBool(value);
         }
+        public override string ToString()
+        {
+            if (Value is bool boolean) return boolean.ToString();
+            if (Value is int integer) return integer.ToString();
+            else return "";
+        }
     }
 }

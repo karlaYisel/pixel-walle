@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Core.Utils.SystemClass;
 using Core.Utils.TokenSystem;
 
 namespace Core.AST
@@ -15,7 +16,7 @@ namespace Core.AST
         {
             Identifier = identifier;
         }
-        public void SetExpression(Expression exp)
+        public void SetExpression(Expression? exp)
         {
             Expression = exp;
         }

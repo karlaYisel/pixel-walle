@@ -32,7 +32,7 @@ namespace Core.AST
             bool valid = true;
             for (int i = 0; i < Arguments.Length; i++)
             {
-                if (!(Arguments[i].ReturnType == ArgumentsTypes[i] || (Arguments[i].ReturnType == typeof(IntegerOrBool) && (ArgumentsTypes[i] == typeof(int) || (ArgumentsTypes[i] == typeof(bool))))))
+                if (!(Arguments[i].ReturnType == ArgumentsTypes[i] || (Arguments[i].ReturnType == typeof(IntegerOrBool) && (ArgumentsTypes[i] == typeof(int) || (ArgumentsTypes[i] == typeof(bool)))) || (ArgumentsTypes[i] == typeof(string) && Arguments[i].ReturnType == typeof(System.Drawing.Color)) ))
                 {
                     errors.Add(new CompilingError(Arguments[i].Location, ErrorCode.InvalidFunctionArguments, $"Expected argument type {ArgumentsTypes[i].Name}"));
                     valid = false;

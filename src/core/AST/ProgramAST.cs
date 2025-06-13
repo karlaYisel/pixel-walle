@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using Core.Utils.Error;
-using Core.Utils.TokenSystem;
 
 namespace Core.AST
 {
@@ -10,17 +9,32 @@ namespace Core.AST
         private List<ASTNodeBase> Commands;
         private Dictionary<string, int> Labels;
         private int CommandPosition;
+        private Dictionary<string, Type> VariablesTypes;
         public List<CompilingError> Errors { get; private set; }
 
 
-        public ProgramAST(string name)
+        public ProgramAST(string name, List<CompilingError> errors)
         {
             Name = name;
             Commands = new List<ASTNodeBase>();
             Labels = new Dictionary<string, int>();
-            Errors = new List<CompilingError>();
+            VariablesTypes = new Dictionary<string, Type>();
+            Errors = errors;
         }
 
+        public void SetVariablesTypes(Dictionary<string, Type> variablesTypes)
+        { 
+            VariablesTypes = variablesTypes;
+        }
+        public Dictionary<string, Type> GetVariablesTypes()
+        {
+            return new Dictionary<string, Type>(VariablesTypes);
+        }
+
+        public int GetPosition()
+        {
+            return CommandPosition;
+        }
         public void MoveNext(int k)
         {
             CommandPosition += k;
@@ -86,12 +100,16 @@ namespace Core.AST
         {
             return Labels.ContainsKey(label);
         }
-
-        public bool GoToLabel(string label)
+        public void GoToLabel(string label)
         {
-            if (!IsLabel(label)) return false;
             MoveTo(Labels[label]);
-            return true;
+        }
+
+        public void GoToLastLabel()
+        {
+            if (Labels.Count > 0)
+                MoveTo(Labels.Values.Max());
+            else MoveTo(0);
         }
     }
 
@@ -99,10 +117,9 @@ namespace Core.AST
     {
         public Type ReturnType;
         public Type[] ArgumentTypes { get; private set; }
-
         public string[] ArgumentNames { get; private set; }
 
-        public Script(string name) : base(name) 
+        public Script(string name, List<CompilingError> errors) : base(name, errors) 
         {
             ReturnType = typeof(Core.Utils.SystemClass.Void);
             ArgumentTypes = [];
@@ -116,6 +133,11 @@ namespace Core.AST
         { 
             ArgumentTypes = argumentTypes; 
             ArgumentNames = argumentNames;
+        }
+
+        public Script ShallowCopy()
+        {
+            return (Script)MemberwiseClone();
         }
     }
 }

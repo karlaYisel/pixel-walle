@@ -27,7 +27,7 @@ namespace Core.AST.Expressions.Atom
             }
             return false;
         }
-        public static IntegerOrBool Evaluate(Literal<IntegerOrBool> expression)
+        public IntegerOrBool Evaluate(Literal<IntegerOrBool> expression)
         {
             return -expression.Evaluate();
         }
@@ -36,7 +36,7 @@ namespace Core.AST.Expressions.Atom
         {
             if (Expression is not null) Expression = Expression.Reduce();
             if (TryEvaluate(out IntegerOrBool result)) return new Literal<IntegerOrBool>(result, Location);
-            if (Expression is Minus minus && minus.Expression is not null) return minus.Expression;
+            if (Expression is Minus minus && minus.Expression is Minus min) Expression = min.Expression;
             return this;
         }
         public override bool HasExpressionFunctions()

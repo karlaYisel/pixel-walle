@@ -23,7 +23,7 @@ namespace Core.AST.Expressions.Binary
             }
             return false;
         }
-        public static IntegerOrBool Evaluate(Literal<IntegerOrBool> left, Literal<IntegerOrBool> right)
+        public override IntegerOrBool Evaluate(Literal<IntegerOrBool> left, Literal<IntegerOrBool> right)
         {
             return left.Evaluate() * right.Evaluate();
         }

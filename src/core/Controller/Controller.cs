@@ -1,0 +1,219 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Core.Parser;
+using Core.Lexer;
+using Core.PixelWallE;
+using Core.Utils.ImageEditor;
+using Core.Lexer.pw;
+using Core.Parser.pw;
+using Core.Utils.Error;
+using Core.Utils.TokenSystem;
+using Core.Utils;
+using Core.AST;
+using Core.Semantic;
+using Core.Executor;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
+namespace Core.Controller
+{
+    public class Controller
+    {
+        private LanguageServiceSelector lexerSelector;
+        private ImageEditorSelector editorSelector;
+        private int delay;
+
+        public Controller()
+        {
+            var lexers = new Dictionary<string, ILexerAnalyser>
+            {
+                { "pw", new LexerAnalyser() },
+                { "pwscript", new LexerAnalyser() }
+            };
+
+            var parsers = new Dictionary<string, IParserAnalyser>
+            {
+                { "pw", new ParserAnalyser() },
+                { "pwscript", new ParserAnalyser() }
+            };
+
+            ExecutionError? error;
+            var editors = new Dictionary<string, IPixelWallE>
+            {
+                { "png", new Core.PixelWallE.png.PixelWallE(out error) }
+            };
+
+            lexerSelector = new LanguageServiceSelector(lexers, parsers);
+            editorSelector = new ImageEditorSelector(editors);
+        }
+
+        public void SetDelay(int delay)
+        {
+            this.delay = delay;
+        }
+
+        public Program Compile(string CodePath, string[] ScriptsPath, out List<CompilingError> errors, out ExecutionError? error)
+        {
+            errors = new List<CompilingError>();
+            error = null;
+            bool stopAtParser = false;
+
+            IEnumerable<Token> code;
+            string? path = GetCleanExtension(CodePath);
+            if (path is null)
+            {
+                errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = CodePath }, ErrorCode.ExtensionError, "Extension not suported"));
+                code = new List<Token>();
+                stopAtParser = true;
+            }
+            else switch (path)
+            {
+                case "pw":
+                    code = lexerSelector.GetLexer(path).Lexical.GetTokens(CodePath, File.ReadAllText(CodePath), errors);
+                    break;
+                case "pwscript":
+                    errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = CodePath }, ErrorCode.ExtensionError, "The main code can not be a script"));
+                    code = lexerSelector.GetLexer(path).Lexical.GetTokens(CodePath, File.ReadAllText(CodePath), errors);
+                    break;
+                default:
+                    errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation{ File = CodePath}, ErrorCode.ExtensionError, "Extension not suported"));
+                    code = new List<Token>();
+                    stopAtParser = true;
+                    break;
+            }
+
+            IEnumerable<Token>[] scripts = new IEnumerable<Token>[ScriptsPath.Length];
+            for (int i = 0; i < ScriptsPath.Length; i++)
+            {
+                path = GetCleanExtension(ScriptsPath[i]);
+                if (path is null)
+                {
+                    errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = ScriptsPath[i] }, ErrorCode.ExtensionError, "Extension not suported"));
+                    scripts[i] = new List<Token>();
+                    stopAtParser = true;
+                }
+                else switch (path)
+                {
+                    case "pw":
+                        errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = ScriptsPath[i] }, ErrorCode.ExtensionError, "A script code extension must end in script"));
+                        scripts[i] = lexerSelector.GetLexer(path).Lexical.GetTokens(ScriptsPath[i], File.ReadAllText(ScriptsPath[i]), errors);
+                        break;
+                    case "pwscript":
+                        scripts[i] = lexerSelector.GetLexer(path).Lexical.GetTokens(ScriptsPath[i], File.ReadAllText(ScriptsPath[i]), errors);
+                        break;
+                    default:
+                        errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = ScriptsPath[i] }, ErrorCode.ExtensionError, "Extension not suported"));
+                        scripts[i] = new List<Token>();
+                        stopAtParser = true;
+                        break;
+                }
+            }
+
+            if (stopAtParser)
+            {
+                error = new ExecutionError(ErrorCode.Invalid, "Extension of file");
+                return new Program(new AST.ProgramAST("", errors));
+            }
+
+            TokenStream sCode = new TokenStream(code);
+            TokenStream[] sScript = new TokenStream[scripts.Length];
+            for (int i = 0; i < scripts.Length; i++)
+            {
+                sScript[i] = new TokenStream(scripts[i]);
+            }
+
+            ProgramAST pCode;
+            Script[] pScripts = new Script[sScript.Length];
+            path = GetCleanExtension(CodePath);
+            if (path is null)
+            {
+                pCode = new ProgramAST("", errors);
+            }
+            else switch (path)
+            {
+                case "pw" or "pwscript":
+                    pCode = lexerSelector.GetParser(path).Parser.ParseProgram(CodePath, sCode, errors);
+                    break;
+                default:
+                    pCode = new ProgramAST("", errors);
+                    break;
+            }
+            for (int i = 0; i < ScriptsPath.Length; i++)
+            {
+                path = GetCleanExtension(ScriptsPath[i]);
+                if (path is null)
+                {
+                    pScripts[i] = new Script("", errors);
+                }
+                else switch (path)
+                {
+                    case "pw" or "pwscript":
+                        pScripts[i] = lexerSelector.GetParser(path).Parser.ParseScript(ScriptsPath[i], sScript[i], errors);
+                        break;
+                    default:
+                        pScripts[i] = new Script("", errors);
+                        break;
+                }
+            }
+
+            ISemantic sem = new Semantic.Semantic();
+
+            Program program = sem.CheckSemantic(pCode, pScripts);
+
+            return program;
+        }
+
+        private void Execute(Program program, out ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        {
+            error = null;
+            IExecutor ex = new Executor.Executor();
+
+            string? pathe = GetCleanExtension(path);
+            switch (pathe)
+            {
+                case "png":
+                    ex.SetWallE(editorSelector.GetEditor(pathe));
+                    break;
+                default:
+                    error = new ExecutionError(ErrorCode.ExtensionError, "Extension not suported");
+                    break;
+            }
+
+            ex.SetDelay(delay);
+            ex.SetColorType(color);
+            ex.SetBrushType(brush);
+            ex.SetProgram(program);
+
+            ex.ExecuteCode(out error, cancel);
+        }
+
+        public void Run(string CodePath, string[] ScriptsPath, out List<CompilingError> errors, out ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        {
+            Program program = Compile(CodePath, ScriptsPath, out errors, out error);
+
+            if (error is not null || errors.Count() > 0) return;
+
+            Execute(program, out error, color, brush, cancel, path);
+        }
+
+        public static string? GetCleanExtension(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            try
+            {
+                string ext = Path.GetExtension(path);
+                if (string.IsNullOrWhiteSpace(ext) || ext == ".")
+                    return null;
+                return ext.TrimStart('.').ToLowerInvariant();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+}
