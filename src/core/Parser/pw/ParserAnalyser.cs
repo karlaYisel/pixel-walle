@@ -21,29 +21,29 @@ namespace Core.Parser.pw
                 {
                     __Parser = new Parser();
 
-                    __Parser.RegisterColor("red", Color.FromArgb(255, 0, 0));
-                    __Parser.RegisterColor("rojo", Color.FromArgb(255, 0, 0));
+                    __Parser.RegisterColor("red", Color.FromArgb(255, 255, 0, 0));
+                    __Parser.RegisterColor("rojo", Color.FromArgb(255, 255, 0, 0));
 
-                    __Parser.RegisterColor("blue", Color.FromArgb(0, 0, 255));
-                    __Parser.RegisterColor("azul", Color.FromArgb(0, 0, 255));
+                    __Parser.RegisterColor("blue", Color.FromArgb(255, 0, 0, 255));
+                    __Parser.RegisterColor("azul", Color.FromArgb(255, 0, 0, 255));
 
-                    __Parser.RegisterColor("green", Color.FromArgb(0, 255, 0));
-                    __Parser.RegisterColor("verde", Color.FromArgb(0, 255, 0));
+                    __Parser.RegisterColor("green", Color.FromArgb(255, 0, 255, 0));
+                    __Parser.RegisterColor("verde", Color.FromArgb(255, 0, 255, 0));
 
-                    __Parser.RegisterColor("yellow", Color.FromArgb(255, 255, 0));
-                    __Parser.RegisterColor("amarillo", Color.FromArgb(255, 255, 0));
+                    __Parser.RegisterColor("yellow", Color.FromArgb(255, 255, 255, 0));
+                    __Parser.RegisterColor("amarillo", Color.FromArgb(255, 255, 255, 0));
 
-                    __Parser.RegisterColor("orange", Color.FromArgb(255, 165, 0));
-                    __Parser.RegisterColor("naranja", Color.FromArgb(255, 165, 0));
+                    __Parser.RegisterColor("orange", Color.FromArgb(255, 255, 165, 0));
+                    __Parser.RegisterColor("naranja", Color.FromArgb(255, 255, 165, 0));
 
-                    __Parser.RegisterColor("purple", Color.FromArgb(128, 0, 128));
-                    __Parser.RegisterColor("morado", Color.FromArgb(128, 0, 128));
+                    __Parser.RegisterColor("purple", Color.FromArgb(255, 128, 0, 128));
+                    __Parser.RegisterColor("morado", Color.FromArgb(255, 128, 0, 128));
 
-                    __Parser.RegisterColor("black", Color.FromArgb(0, 0, 0));
-                    __Parser.RegisterColor("negro", Color.FromArgb(0, 0, 0));
+                    __Parser.RegisterColor("black", Color.FromArgb(255, 0, 0, 0));
+                    __Parser.RegisterColor("negro", Color.FromArgb(255, 0, 0, 0));
 
-                    __Parser.RegisterColor("white", Color.FromArgb(255, 255, 255));
-                    __Parser.RegisterColor("blanco", Color.FromArgb(255, 255, 255));
+                    __Parser.RegisterColor("white", Color.FromArgb(255, 255, 255, 255));
+                    __Parser.RegisterColor("blanco", Color.FromArgb(255, 255, 255, 255));
 
                     __Parser.RegisterColor("transparent", Color.FromArgb(0));
                     __Parser.RegisterColor("transparente", Color.FromArgb(0));

@@ -16,14 +16,17 @@ using Core.AST;
 using Core.Semantic;
 using Core.Executor;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.IO;
 
 namespace Core.Controller
 {
+    public delegate Task CanvasChanged();
     public class Controller
     {
         private LanguageServiceSelector lexerSelector;
         private ImageEditorSelector editorSelector;
         private int delay;
+        private CanvasChanged? change;
 
         public Controller()
         {
@@ -49,15 +52,25 @@ namespace Core.Controller
             editorSelector = new ImageEditorSelector(editors);
         }
 
+        public async Task CanvasHasChanged()
+        {
+            if (change != null)
+                await change.Invoke();
+        }
+
+        public void AddCanvasChangedListener(CanvasChanged listener)
+        {
+            change += listener;
+        }
+
         public void SetDelay(int delay)
         {
             this.delay = delay;
         }
 
-        public Program Compile(string CodePath, string[] ScriptsPath, out List<CompilingError> errors, out ExecutionError? error)
+        public Program Compile(string CodePath, string CodeContent, string[] ScriptsPath, string[] ScriptsContent, out List<CompilingError> errors)
         {
             errors = new List<CompilingError>();
-            error = null;
             bool stopAtParser = false;
 
             IEnumerable<Token> code;
@@ -71,11 +84,11 @@ namespace Core.Controller
             else switch (path)
             {
                 case "pw":
-                    code = lexerSelector.GetLexer(path).Lexical.GetTokens(CodePath, File.ReadAllText(CodePath), errors);
+                    code = lexerSelector.GetLexer(path).Lexical.GetTokens(CodePath, CodeContent, errors);
                     break;
                 case "pwscript":
                     errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = CodePath }, ErrorCode.ExtensionError, "The main code can not be a script"));
-                    code = lexerSelector.GetLexer(path).Lexical.GetTokens(CodePath, File.ReadAllText(CodePath), errors);
+                    code = lexerSelector.GetLexer(path).Lexical.GetTokens(CodePath, CodeContent, errors);
                     break;
                 default:
                     errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation{ File = CodePath}, ErrorCode.ExtensionError, "Extension not suported"));
@@ -98,10 +111,10 @@ namespace Core.Controller
                 {
                     case "pw":
                         errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = ScriptsPath[i] }, ErrorCode.ExtensionError, "A script code extension must end in script"));
-                        scripts[i] = lexerSelector.GetLexer(path).Lexical.GetTokens(ScriptsPath[i], File.ReadAllText(ScriptsPath[i]), errors);
+                        scripts[i] = lexerSelector.GetLexer(path).Lexical.GetTokens(ScriptsPath[i], ScriptsContent[i], errors);
                         break;
                     case "pwscript":
-                        scripts[i] = lexerSelector.GetLexer(path).Lexical.GetTokens(ScriptsPath[i], File.ReadAllText(ScriptsPath[i]), errors);
+                        scripts[i] = lexerSelector.GetLexer(path).Lexical.GetTokens(ScriptsPath[i], ScriptsContent[i], errors);
                         break;
                     default:
                         errors.Add(new CompilingError(new Utils.TokenSystem.CodeLocation { File = ScriptsPath[i] }, ErrorCode.ExtensionError, "Extension not suported"));
@@ -113,10 +126,8 @@ namespace Core.Controller
 
             if (stopAtParser)
             {
-                error = new ExecutionError(ErrorCode.Invalid, "Extension of file");
                 return new Program(new AST.ProgramAST("", errors));
             }
-
             TokenStream sCode = new TokenStream(code);
             TokenStream[] sScript = new TokenStream[scripts.Length];
             for (int i = 0; i < scripts.Length; i++)
@@ -157,7 +168,6 @@ namespace Core.Controller
                         break;
                 }
             }
-
             ISemantic sem = new Semantic.Semantic();
 
             Program program = sem.CheckSemantic(pCode, pScripts);
@@ -165,10 +175,12 @@ namespace Core.Controller
             return program;
         }
 
-        private void Execute(Program program, out ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        private async Task<ExecutionError?> Execute(Program program, ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
         {
             error = null;
-            IExecutor ex = new Executor.Executor();
+            IExecutorAnalyser exAny = new Executor.ExecutorAnalyser();
+            IExecutor ex = exAny.Executor;
+            ex.AddCanvasChangedListener(CanvasHasChanged);
 
             string? pathe = GetCleanExtension(path);
             switch (pathe)
@@ -186,16 +198,45 @@ namespace Core.Controller
             ex.SetBrushType(brush);
             ex.SetProgram(program);
 
-            ex.ExecuteCode(out error, cancel);
+            error = await ex.ExecuteCode(error, cancel);
+            await CanvasHasChanged();
+            return error;
         }
 
-        public void Run(string CodePath, string[] ScriptsPath, out List<CompilingError> errors, out ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        public async Task <ExecutionError?>Resize(ExecutionError? error, int Width, int Height)
         {
-            Program program = Compile(CodePath, ScriptsPath, out errors, out error);
+            error = null;
+            IPixelWallE pw = new PixelWallE.png.PixelWallE(out error);
 
-            if (error is not null || errors.Count() > 0) return;
+            pw = editorSelector.GetEditor("png");
 
-            Execute(program, out error, color, brush, cancel, path);
+            pw.ImageLoad(out error, Width, Height);
+            await CanvasHasChanged();
+            return error;
+        }
+
+        public byte[] GetImage()
+        {
+            IPixelWallE pw = editorSelector.GetEditor("png");
+            return pw.GetImage();
+        }
+
+        public async Task SetImage(byte[] img)
+        {
+            IPixelWallE pw = editorSelector.GetEditor("png");
+            pw.SetImage(img);
+            await CanvasHasChanged();
+        }
+
+        public async Task<(ExecutionError? error, List<CompilingError> errors)> Run(string CodePath, string CodeContent, string[] ScriptsPath, string[] ScriptsContent, List<CompilingError> errors, ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        {
+            error = null;
+            Program program = Compile(CodePath, CodeContent, ScriptsPath, ScriptsContent, out errors);
+
+            if (errors.Count() > 0) return (error, errors);
+
+            error = await Execute(program, error, color, brush, cancel, path);
+            return (error, errors);
         }
 
         public static string? GetCleanExtension(string? path)

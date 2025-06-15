@@ -1,0 +1,363 @@
+﻿
+.ide-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.toolbar {
+    display: flex;
+    gap: 20px;
+    padding: 10px;
+    background-color: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+    .toolbar-group label {
+        font-size: 12px;
+        margin-right: 5px;
+    }
+
+.delay-input, .canvas-input {
+    width: 80px;
+    height: 32px;
+    background-color: #3c3c3c;
+    border: 1px solid #5a5a5a;
+    color: #d4d4d4;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.file-panel {
+    width: 250px;
+    background-color: #252526;
+    border-right: 1px solid #3e3e42;
+    display: flex;
+    flex-direction: column;
+}
+
+.file-header {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #3e3e42;
+}
+
+.file-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.file-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #2d2d30;
+}
+
+    .file-item:hover {
+        background-color: #2a2d2e;
+    }
+
+    .file-item.selected {
+        background-color: #094771;
+    }
+
+    .file-item.main-file {
+        background-color: #1a4a1a;
+    }
+
+        .file-item.main-file.selected {
+            background-color: #0e5a0e;
+        }
+
+.file-name {
+    flex: 1;
+    font-size: 13px;
+}
+
+.unsaved-indicator {
+    color: #f14c4c;
+    font-weight: bold;
+}
+
+.editor-canvas-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.editor-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #3e3e42;
+}
+
+.editor-header {
+    padding: 10px;
+    background-color: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.code-editor {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.editor-textarea {
+    width: 100%;
+    height: 100%;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 14px;
+    line-height: 20px;
+    padding: 10px;
+    resize: none;
+    outline: none;
+    tab-size: 4;
+}
+
+.error-indicators {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20px;
+    height: 100%;
+    pointer-events: none;
+}
+
+.error-indicator {
+    position: absolute;
+    left: 2px;
+    color: #f14c4c;
+    font-size: 12px;
+}
+
+.canvas-container {
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    background-color: #252526;
+}
+
+.canvas-header {
+    padding: 10px;
+    background-color: #2d2d30;
+    border-bottom: 1px solid #3e3e42;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.canvas-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.canvas-viewport {
+    flex: 1;
+    padding: 10px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.drawing-canvas {
+    border: 1px solid #3e3e42;
+    background-color: white;
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.console-container {
+    background-color: #252526;
+    border-top: 1px solid #3e3e42;
+    transition: height 0.3s ease;
+}
+
+    .console-container.collapsed {
+        height: 40px;
+    }
+
+    .console-container.expanded {
+        height: 200px;
+    }
+
+.console-header {
+    padding: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #2d2d30;
+}
+
+.console-content {
+    padding: 10px;
+    height: calc(100% - 40px);
+    overflow-y: auto;
+}
+
+.error-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    border-bottom: 1px solid #3e3e42;
+}
+
+.error-icon {
+    color: #f14c4c;
+}
+
+.error-file {
+    font-weight: bold;
+    color: #4fc1ff;
+}
+
+.error-line {
+    color: #b5cea8;
+}
+
+.error-message {
+    flex: 1;
+    color: #d4d4d4;
+}
+
+.no-errors {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #4ec9b0;
+    font-style: italic;
+}
+
+.context-menu {
+    position: fixed;
+    background-color: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    z-index: 1000;
+    min-width: 200px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.context-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+    .context-item:hover {
+        background-color: #094771;
+    }
+
+.btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-primary {
+    background-color: #0078d4;
+    color: white;
+}
+
+.btn-success {
+    background-color: #107c10;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #d13438;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #5a5a5a;
+    color: white;
+}
+
+.btn-outline-primary {
+    background-color: transparent;
+    color: #0078d4;
+    border: 1px solid #0078d4;
+}
+
+.btn-outline-secondary {
+    background-color: transparent;
+    color: #d4d4d4;
+    border: 1px solid #5a5a5a;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-control, .form-select {
+    background-color: #3c3c3c;
+    border: 1px solid #5a5a5a;
+    color: #d4d4d4;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+@media (max-width: 768px) {
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toolbar-group {
+        justify-content: space-between;
+    }
+
+    .file-panel {
+        width: 200px;
+    }
+
+    .canvas-container {
+        width: 300px;
+    }
+}

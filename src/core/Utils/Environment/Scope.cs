@@ -38,24 +38,26 @@ namespace Core.Utils.Environment
             return true;
         }
 
-        public bool SetVariable(string variable, object value)
+        public bool SetVariable(string variable, object? value)
         { 
+            if (value is null)
+                return false;
             if(VariablesTypes.ContainsKey(variable))
             {
-                if (VariablesTypes[variable] != value.GetType())
+                if (VariablesTypes[variable] != value?.GetType())
                 {
                     if (value is System.Drawing.Color col && VariablesTypes[variable] == typeof(string))
                     { 
                         Variables[variable] = col.Name;
                         return true;
                     }
-                    if (!(VariablesTypes[variable] == typeof(IntegerOrBool) && (value.GetType() == typeof(int) || value.GetType() == typeof(bool))) && !(VariablesTypes[variable] == typeof(string) && value.GetType() == typeof(System.Drawing.Color)))
+                    if (!(VariablesTypes[variable] == typeof(IntegerOrBool) && (value?.GetType() == typeof(int) || value?.GetType() == typeof(bool))) && !(VariablesTypes[variable] == typeof(string) && value?.GetType() == typeof(System.Drawing.Color)))
                         return false;
                 }
                 Variables[variable] = value;
                 return true;
             }
-            if (value.GetType() == typeof(int) || value.GetType() == typeof(bool))
+            if (value?.GetType() == typeof(int) || value?.GetType() == typeof(bool))
                 VariablesTypes[variable] = typeof(IntegerOrBool);
             if (value is System.Drawing.Color color)
             {
@@ -63,7 +65,7 @@ namespace Core.Utils.Environment
                 Variables[variable] = color.Name;
                 return true;
             }
-            else VariablesTypes[variable] = value.GetType();
+            else VariablesTypes[variable] = value?.GetType();
             Variables[variable] = value;
             return true;
         }

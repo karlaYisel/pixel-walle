@@ -163,14 +163,14 @@ namespace Core.Parser.pw
                     continue;
                 }
 
-                if (program is Script scrt && stream.ParseReturn(errors, out node))
+                if (stream.ParseReturn(errors, out node))
                 {
                     if (node is not null) program.AddNode(node);
                     continue;
                 }
 
                 string label;
-                CodeLocation location = code.LookAhead().Location;
+                CodeLocation location = code.LookAhead(1).Location;
                 if (stream.ParseLabel(errors, out label))
                 {
                     if(program.IsLabel(label))
@@ -315,7 +315,7 @@ namespace Core.Parser.pw
                         Expression? expr = ParseExpression(errors);
                         if (expr is null)
                         {
-                            errors.Add(new CompilingError(stream.LookAhead(1).Location, ErrorCode.Expected, ")"));
+                            errors.Add(new CompilingError(stream.LookAhead(0).Location, ErrorCode.Expected, ")"));
                              break;
                         }
                         if (expr.HasExpressionFunctions()) errors.Add(new CompilingError(expr.Location, ErrorCode.InvalidFunctionArguments, "A function can not contains another function as part of it's arguments"));
@@ -880,6 +880,7 @@ namespace Core.Parser.pw
             private bool IsHexadecimalColor(string value, out System.Drawing.Color color)
             {
                 color = System.Drawing.Color.FromArgb(0);
+                if (string.IsNullOrEmpty(value)) return false;
                 if (!value[0].Equals('#')) return false;
                 string argb = value.Substring(1);
                 if(argb.Length < 8) argb = "FF" + argb;

@@ -9,8 +9,11 @@ using Core.Utils.ImageEditor;
 
 namespace Core.Executor
 {
+    public delegate Task CanvasChanged();
     public interface IExecutor
     {
+        Task CanvasHasChanged();
+        void AddCanvasChangedListener(CanvasChanged listener);
         void SetProgram(Program program);
 
         void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], object>? exp);
@@ -23,6 +26,6 @@ namespace Core.Executor
 
         void SetWallE(PixelWallE.IPixelWallE WallE);
 
-        void ExecuteCode(out ExecutionError? error, CancellationToken cancellationToken);
+        Task<ExecutionError?> ExecuteCode(ExecutionError? error, CancellationToken cancellationToken);
     }
 }

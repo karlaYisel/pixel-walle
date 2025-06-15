@@ -1,0 +1,230 @@
+﻿@page "/"
+@using Core.Controller
+@using Core.Utils.Error
+@using Core.Utils
+@using Core.Utils.ImageEditor
+@using Core.AST
+@using System.Threading
+@rendermode InteractiveServer
+@inject IJSRuntime JSRuntime
+
+<div class="ide-container">
+
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="btn btn-primary" @onclick="CompileCode" disabled="@isRunning">
+                <i class="fas fa-hammer"></i> Compilar
+            </button>
+            <button class="btn btn-success" @onclick="RunCode" disabled="@(isRunning || hasErrors)">
+                <i class="fas fa-play"></i> Ejecutar
+            </button>
+            <button class="btn btn-danger" @onclick="StopExecution" disabled="@(!isRunning)">
+                <i class="fas fa-stop"></i> Detener
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <label>Delay (ms):</label>
+            <input type="number" @bind="delayMs" @bind:after="UpdateDelay" min="0" max="500" class="form-control delay-input" oninput="if (this.value < 0) this.value = 0; if (this.value > 500) this.value = 500;" />
+        </div>
+
+        <div class="toolbar-group">
+            <label>Canvas:</label>
+            <input type="number" @bind="canvasWidth" placeholder="Ancho" min="16" max="10000" class="form-control canvas-input" oninput="if (this.value < 16) this.value = 16; if (this.value > 500) this.value = 10000;" />
+            <input type="number" @bind="canvasHeight" placeholder="Alto" min="16" max="10000" class="form-control canvas-input" oninput="if (this.value < 16) this.value = 16; if (this.value > 500) this.value = 10000;" />
+            <button class="btn btn-secondary" @onclick="ResizeCanvas">
+                <i class="fas fa-expand-arrows-alt"></i> Redimensionar
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <label>Pincel:</label>
+            <select @bind="selectedBrushType" class="form-select">
+                @foreach (var brush in Enum.GetValues<BrushType>())
+                {
+                    <option value="@brush">@brush</option>
+                }
+            </select>
+        </div>
+
+        <div class="toolbar-group">
+            <label>Color:</label>
+            <select @bind="selectedColorType" class="form-select">
+                @foreach (var color in Enum.GetValues<ColorType>())
+                {
+                    <option value="@color">@color</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="file-panel">
+            <div class="file-header">
+                <h6>Archivos</h6>
+                <button class="btn btn-sm btn-outline-primary" @onclick="CreateNewScript">
+                    <i class="fas fa-plus"></i> +
+                </button>
+            </div>
+
+            <div class="file-list">
+                <!-- Main file -->
+                <div class="file-item main-file @(selectedFileIndex == -1 ? "selected" : "")"
+                     @onclick="() => SelectFile(-1)"
+                     @oncontextmenu="(e) => ShowContextMenu(e, -1)"
+                     @oncontextmenu:preventDefault="true">
+                    <i class="fas fa-file-code"></i>
+                    <span class="file-name">@(mainFile?.Name ?? "Sin archivo")</span>
+                    @if (mainFile?.HasUnsavedChanges == true)
+                    {
+                        <span class="unsaved-indicator">●</span>
+                    }
+                </div>
+
+                <!-- Script files -->
+                @for (int i = 0; i < scriptFiles.Count; i++)
+                {
+                    var index = i;
+                    var file = scriptFiles[i];
+                    <div class="file-item @(selectedFileIndex == index ? "selected" : "")"
+                         @onclick="() => SelectFile(index)"
+                         @oncontextmenu="(e) => ShowContextMenu(e, index)"
+                         @oncontextmenu:preventDefault="true">
+                        <i class="fas fa-file-alt"></i>
+                        <span class="file-name">@file.Name</span>
+                        @if (file.HasUnsavedChanges)
+                        {
+                            <span class="unsaved-indicator">●</span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="editor-canvas-container">
+            <div class="editor-container">
+                <div class="editor-header">
+                    <span>@(GetCurrentFileName())</span>
+                    <div class="editor-actions">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="SaveCurrentFile">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="SaveAllFiles">
+                            <i class="fas fa-save"></i> Guardar Todo
+                        </button>
+                    </div>
+                </div>
+
+                <div class="code-editor">
+                    <textarea @bind="currentFileContent"
+                              @oninput="OnCodeChange"
+                              class="editor-textarea"
+                              spellcheck="false"
+                              placeholder="Selecciona un archivo para editarlo..."></textarea>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <div class="canvas-header">
+                    <span>Canvas</span>
+                    <div class="canvas-actions">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="DownloadCanvas">
+                            <i class="fas fa-download"></i> Descargar
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadCanvas">
+                            <i class="fas fa-upload"></i> Cargar
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ClearCanvas">
+                            <i class="fas fa-eraser"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-viewport">
+                    <img src="@originalImageDataUrl" alt="Canvas Imagen" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="console-container @(showConsole ? "expanded" : "collapsed")">
+        <div class="console-header" @onclick="ToggleConsole">
+            <i class="fas @(showConsole ? "fa-chevron-down" : "fa-chevron-up")"></i>
+            <span>Consola de Errores (@compilingErrors.Count errores)</span>
+        </div>
+
+        @if (showConsole)
+        {
+            <div class="console-content">
+                @if (compilingErrors.Any())
+                {
+                    @foreach (var error in compilingErrors)
+                    {
+                        <div class="error-item">
+                            <i class="fas fa-exclamation-circle error-icon"></i>
+                            <span class="error-file">@error.Location.File</span>
+                            <span class="error-line">[Línea @error.Location.Line , Columna @error.Location.Column]</span>
+                            <span class="error-message">@error.Code.ToString() @error.Argument</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="no-errors">
+                        <i class="fas fa-check-circle"></i>
+                        Sin errores de compilación
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+</div>
+
+@if (showContextMenu)
+{
+    <div class="context-menu" style="left: @(contextMenuX + "px"); top: @(contextMenuY + "px")">
+        @if (contextMenuFileIndex == -1)
+        {
+            <div class="context-item" @onclick="CreateNewMainFile">
+                <i class="fas fa-file-plus"></i> Crear nuevo archivo principal
+            </div>
+            <div class="context-item" @onclick="ReplaceMainFileFromDisk">
+                <i class="fas fa-folder-open"></i> Reemplazar desde archivo
+            </div>
+        }
+        else
+        {
+            <div class="context-item" @onclick="CreateNewScript">
+                <i class="fas fa-file-plus"></i> Crear nuevo script
+            </div>
+            <div class="context-item" @onclick="ReplaceScriptFromDisk">
+                <i class="fas fa-folder-open"></i> Reemplazar desde archivo
+            </div>
+            <div class="context-item" @onclick="() => RemoveScript(contextMenuFileIndex)">
+                <i class="fas fa-trash"></i> Quitar script
+            </div>
+        }
+        <div class="context-item" @onclick="() => SaveFile(contextMenuFileIndex)">
+            <i class="fas fa-save"></i> Guardar
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(executionErrorMessage))
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Error de Ejecución</h5>
+                </div>
+                <div class="modal-body">
+                    @executionErrorMessage
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="CloseExecutionError">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

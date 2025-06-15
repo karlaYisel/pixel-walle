@@ -183,7 +183,7 @@ namespace Core.Semantic
             CheckObjectAssign(ref objectAssign, variables, scripts, code.Errors, code);
             code.SetVariablesTypes(variables);
 
-            code.MoveNext(position);
+            code.MoveTo(position);
 
             while (code.CanLookAhead())
             {
@@ -340,7 +340,7 @@ namespace Core.Semantic
                 {
                     if (script.Name.Equals(nfunc.Identifier))
                     {
-                        nfunc.SetTypes(nfunc.ArgumentsTypes);
+                        nfunc.SetTypes(script.ArgumentTypes);
                         IsDefined = true;
                         break;
                     }

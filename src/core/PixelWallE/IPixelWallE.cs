@@ -8,13 +8,11 @@ namespace Core.PixelWallE
     {
         void SetDelay(int delay);
 
-        void Save(out ExecutionError? error, string path = "");
+        byte[] GetImage();
 
-        void ImageLoad(out ExecutionError? error, string? inputPath = null);
+        void SetImage(byte[] img);
 
         void ImageLoad(out ExecutionError? error, int x, int y);
-
-        bool IsDefaultPath(out ExecutionError? error);
 
         void MoveTo(out ExecutionError? error, int x, int y);
 

@@ -20,7 +20,7 @@ namespace Core.PixelWallE.png
         public PixelWallE(out ExecutionError? error, string? path = null)
         {
             X = Y = 0;
-            image = new ImageEditor(out error, path);
+            image = new ImageEditor(out error);
             brushColor = Color.FromArgb(0);
             brushSize = 1;
             brushType = BrushType.Square;
@@ -32,14 +32,14 @@ namespace Core.PixelWallE.png
             this.delay = delay;
         }
 
-        public void Save(out ExecutionError? error, string path = "")
+        public byte[] GetImage()
         {
-            image.Save(out error, path);
+            return image.GetImage();
         }
 
-        public void ImageLoad(out ExecutionError? error, string? inputPath = null)
+        public void SetImage(byte[] img)
         {
-            image.ImageLoad(out error, inputPath);
+            image.SetImage(img);
         }
 
         public void ImageLoad(out ExecutionError? error, int x, int y)
@@ -47,10 +47,9 @@ namespace Core.PixelWallE.png
             image.ImageLoad(out error, x, y);
         }
 
-        public bool IsDefaultPath(out ExecutionError? error)
+        public void ImageLoad(out ExecutionError? error)
         {
-            error = null;
-            return image.IsDefaultPath();
+            image.ImageLoad(out error, 0, 0);
         }
 
         public void MoveTo(out ExecutionError? error, int x, int y)
@@ -341,7 +340,6 @@ namespace Core.PixelWallE.png
             error = null;
             if (distance % positions.Count != 0) actualPosition = (actualPosition.x + positions[distance % positions.Count].x, actualPosition.y + positions[distance % positions.Count].y);
             if (changeWallEPos) MoveTo(out error, actualPosition.x, actualPosition.y);
-
         }
 
         public void DrawCircle(out ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true)
