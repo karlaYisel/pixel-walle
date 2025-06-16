@@ -15,12 +15,12 @@ namespace Core.Executor
     {
         private Program? _program;
         private PixelWallE.IPixelWallE? _wall; 
-        private Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], object>> SystemFunctions;
+        private Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>> SystemFunctions;
         private CanvasChanged? _canvasChanged;
 
         public Executor()
         {
-            SystemFunctions = new Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], object>>();
+            SystemFunctions = new Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>>();
         }
 
         public void SetProgram(Program program)
@@ -28,7 +28,7 @@ namespace Core.Executor
             _program = program;
         }
 
-        public void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], object>? exp)
+        public void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>? exp)
         {
             if (exp is not null) SystemFunctions.Add(identifier, exp);
         }
@@ -320,7 +320,9 @@ namespace Core.Executor
                         await CanvasHasChanged();
                         if (error is not null) return (error, result);
                     }
-                    result = SystemFunctions[func.Identifier].Invoke(_wall, [error, .. values]);
+                    var re = SystemFunctions[func.Identifier].Invoke(_wall, [error, .. values]);
+                    error = re.Item1;
+                    result = re.Item2;
                     return (error, result);
                 }
                 catch (Exception ex) when (ex is InvalidCastException or IndexOutOfRangeException or NullReferenceException)

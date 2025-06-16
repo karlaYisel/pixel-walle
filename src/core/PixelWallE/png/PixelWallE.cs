@@ -427,47 +427,56 @@ namespace Core.PixelWallE.png
         }
 
         public void Fill(out ExecutionError? error, int? x = null, int? y = null, bool changeWallEPos = true)
-        { 
+        {
             error = null;
             if (x is null) x = this.X;
             if (y is null) y = this.Y;
-            int color = GetCanvasColor(out error, (int)x, (int)y).ToArgb();
+
+            int targetColor = GetCanvasColor(out error, (int)x, (int)y).ToArgb();
             if (error is not null) return;
 
             int[] X = { 0, 0, 1, -1 };
             int[] Y = { 1, -1, 0, 0 };
-            List<(int x, int y)> innerPixels = new List<(int x, int y)>();
+
+            HashSet<(int x, int y)> visited = new HashSet<(int x, int y)>();
+            List<(int x, int y)> fillPixels = new List<(int x, int y)>();
             Queue<(int x, int y)> positions = new Queue<(int x, int y)>();
 
             positions.Enqueue(((int)x, (int)y));
-            innerPixels.Add(((int)x, (int)y));
 
-            (int x, int y) pos;
             while (positions.Count > 0)
             {
-                pos = positions.Dequeue();
+                var pos = positions.Dequeue();
 
-                if (GetCanvasColor(out error, pos.x, pos.y).ToArgb() == color && error is null)
+                if (visited.Contains(pos) || !IsInCanvas(out error, pos.x, pos.y))
+                    continue;
+
+                visited.Add(pos);
+
+                if (GetCanvasColor(out error, pos.x, pos.y).ToArgb() == targetColor && error is null)
                 {
+                    fillPixels.Add(pos);
+
                     for (int i = 0; i < X.Length; i++)
                     {
-                        if (!innerPixels.Contains((pos.x + X[i], pos.y + Y[i])) && IsInCanvas(out error, pos.x + X[i], pos.y + Y[i]))
+                        var newPos = (pos.x + X[i], pos.y + Y[i]);
+                        if (!visited.Contains(newPos))
                         {
-                            innerPixels.Add((pos.x + X[i], pos.y + Y[i]));
-                            positions.Enqueue((pos.x + X[i], pos.y + Y[i]));
+                            positions.Enqueue(newPos);
                         }
                     }
                 }
             }
 
-            foreach (var point in innerPixels)
+            foreach (var point in fillPixels)
             {
                 DrawPixel(out error, point.x, point.y);
+                if (error is not null) break;
                 Thread.Sleep(delay);
             }
 
-            error = null;
-            if (changeWallEPos) MoveTo(out error, (int)x, (int)y);
+            if (changeWallEPos && error is null)
+                MoveTo(out error, (int)x, (int)y);
         }
 
         private void GetDir(ref int x, ref int y, out List<(int x, int y)> positions)
@@ -483,7 +492,7 @@ namespace Core.PixelWallE.png
             y = y / d;
 
             (int x, int y) pos;
-            d = Math.Max((int)Math.CopySign(x, 1), (int)Math.CopySign(x, 1));
+            d = Math.Max((int)Math.CopySign(x, 1), (int)Math.CopySign(y, 1));
             for (int i = 0; i < d; i++)
             {
                 pos = (i*x/d, i*y/d);

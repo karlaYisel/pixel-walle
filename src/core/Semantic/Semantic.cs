@@ -348,12 +348,12 @@ namespace Core.Semantic
                 if (!IsDefined)
                     errors.Add(new CompilingError(func.Location, ErrorCode.FunctionNotFound, "Function identifier is not associated to any defined function"));
             }
-            func.CheckTypes(errors);
             for ( int i = 0; i < func.Arguments.Length; i++)
             {
                 CheckExpression(func.Arguments[i], variables, scripts, errors, out Expression expResult);
                 func.Arguments[i] = expResult;
             }
+            func.CheckTypes(errors);
         }
 
         private void CheckGoTo(GoTo goTo, ProgramAST code, Dictionary<string, Type> variables, Script[] scripts, List<CompilingError> errors)
@@ -375,6 +375,11 @@ namespace Core.Semantic
 
         private void CheckReturn(Return ret, ProgramAST code, Dictionary<string, Type> variables, Script[] scripts, List<CompilingError> errors)
         {
+            if (ret.Expression is not null)
+            {
+                CheckExpression(ret.Expression, variables, scripts, code.Errors, out Expression expResult);
+                ret.SetExpression(expResult);
+            }
             if (code is not Script sct || sct.ReturnType == typeof(Core.Utils.SystemClass.Void))
             {
                 if (ret.Expression is not null)
@@ -385,13 +390,13 @@ namespace Core.Semantic
                 if (ret.Expression is not Expression<IntegerOrBool>)
                     code.Errors.Add(new CompilingError(ret.Location, ErrorCode.InvalidReturnType, $"This function's return type is '{sct.ReturnType.Name}', 'return' keyword can return an Expression type '{sct.ReturnType.Name}'"));
             }
+            else if (sct.ReturnType == typeof(Color))
+            {
+                if (ret.Expression is not Expression<Color> && ret.Expression is not Expression<string>)
+                    code.Errors.Add(new CompilingError(ret.Location, ErrorCode.InvalidReturnType, $"This function's return type is '{sct.ReturnType.Name}', 'return' keyword can return an Expression type '{sct.ReturnType.Name}'"));
+            }
             else if (ret.Expression is null || sct.ReturnType != ret.Expression.ReturnType)
                 code.Errors.Add(new CompilingError(ret.Location, ErrorCode.InvalidReturnType, $"This function's return type is '{sct.ReturnType.Name}', 'return' keyword can return an Expression type '{sct.ReturnType.Name}'"));
-            if (ret.Expression is not null)
-            {
-                CheckExpression(ret.Expression, variables, scripts, code.Errors, out Expression expResult);
-                ret.SetExpression(expResult);
-            }
         }
 
         private Type CheckExpression(Expression exp, Dictionary<string, Type> variables, Script[] scripts, List<CompilingError> errors, out Expression expResult)

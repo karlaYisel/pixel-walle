@@ -16,7 +16,7 @@ namespace Core.Executor
         void AddCanvasChangedListener(CanvasChanged listener);
         void SetProgram(Program program);
 
-        void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], object>? exp);
+        void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>? exp);
 
         void SetDelay(int delay);
 

@@ -32,7 +32,7 @@ namespace Core.Executor
                         obj.MoveTo(out error, x, y);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.Respawn.ToString(), (obj, args) =>
                     {
@@ -43,7 +43,7 @@ namespace Core.Executor
                         obj.MoveTo(out error, x, y);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.Color.ToString(), (obj, args) =>
                     {
@@ -53,7 +53,7 @@ namespace Core.Executor
                         obj.SetBrushColor(out error, color);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.Size.ToString(), (obj, args) =>
                     {
@@ -63,7 +63,7 @@ namespace Core.Executor
                         obj.SetSize(out error, size);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.DrawLine.ToString(), (obj, args) =>
                     {
@@ -75,7 +75,7 @@ namespace Core.Executor
                         obj.DrawLine(out error, xDir, yDir, distance);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.DrawCircle.ToString(), (obj, args) =>
                     {
@@ -87,7 +87,7 @@ namespace Core.Executor
                         obj.DrawCircle(out error, xDir, yDir, distance);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.DrawRectangle.ToString(), (obj, args) =>
                     {
@@ -101,7 +101,7 @@ namespace Core.Executor
                         obj.DrawRectangle(out error, xDir, yDir, distance, width, height);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.Fill.ToString(), (obj, args) =>
                     {
@@ -110,7 +110,7 @@ namespace Core.Executor
                         obj.Fill(out error);
 
                         args[0] = error;
-                        return Core.Utils.SystemClass.Void.Value;
+                        return (error, Core.Utils.SystemClass.Void.Value);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.GetActualX.ToString(), (obj, args) =>
                     {
@@ -119,7 +119,7 @@ namespace Core.Executor
                         var result = obj.GetX(out error);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.GetActualY.ToString(), (obj, args) =>
                     {
@@ -128,7 +128,7 @@ namespace Core.Executor
                         var result = obj.GetY(out error);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.GetCanvasSize.ToString(), (obj, args) =>
                     {
@@ -137,7 +137,7 @@ namespace Core.Executor
                         var result = obj.GetCanvasSize(out error);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.GetCanvasSizeX.ToString(), (obj, args) =>
                     {
@@ -146,7 +146,7 @@ namespace Core.Executor
                         var result = obj.GetCanvasWidth(out error);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.GetCanvasSizeY.ToString(), (obj, args) =>
                     {
@@ -155,7 +155,7 @@ namespace Core.Executor
                         var result = obj.GetCanvasHeight(out error);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.GetColorCount.ToString(), (obj, args) =>
                     {
@@ -169,7 +169,7 @@ namespace Core.Executor
                         var result = obj.GetColorCount(out error, color, x1, x2, y1, y2);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.IsBrushColor.ToString(), (obj, args) =>
                     {
@@ -179,7 +179,7 @@ namespace Core.Executor
                         var result = obj.IsBrushColor(out error, color);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.IsBrushSize.ToString(), (obj, args) =>
                     {
@@ -189,7 +189,7 @@ namespace Core.Executor
                         var result = obj.IsBrushSize(out error, size);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.IsCanvasColor.ToString(), (obj, args) =>
                     {
@@ -201,7 +201,7 @@ namespace Core.Executor
                         var result = obj.IsCanvasColor(out error, color, vertical, horizontal);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                     __Executor.AddSystemFunction(FunctionIdentifier.IsColor.ToString(), (obj, args) =>
                     {
@@ -213,7 +213,7 @@ namespace Core.Executor
                         var result = obj.IsCanvasColor(out error, color, vertical, horizontal);
 
                         args[0] = error;
-                        return result;
+                        return (error, result);
                     });
                 }
 
