@@ -1,5 +1,10 @@
 ﻿
 .ide-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100vw;
+    height: 100vw;
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -191,6 +196,14 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
+    position: relative;
+}
+
+.canvas-viewport img , .canvas-viewport svg{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .drawing-canvas {

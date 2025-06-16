@@ -30,8 +30,8 @@
 
         <div class="toolbar-group">
             <label>Canvas:</label>
-            <input type="number" @bind="canvasWidth" placeholder="Ancho" min="16" max="10000" class="form-control canvas-input" oninput="if (this.value < 16) this.value = 16; if (this.value > 500) this.value = 10000;" />
-            <input type="number" @bind="canvasHeight" placeholder="Alto" min="16" max="10000" class="form-control canvas-input" oninput="if (this.value < 16) this.value = 16; if (this.value > 500) this.value = 10000;" />
+            <input type="number" @bind="canvasWidth" placeholder="Ancho" min="16" max="10000" class="form-control canvas-input" oninput="if (this.value < 16) this.value = 16; if (this.value > 10000) this.value = 10000;" />
+            <input type="number" @bind="canvasHeight" placeholder="Alto" min="16" max="10000" class="form-control canvas-input" oninput="if (this.value < 16) this.value = 16; if (this.value > 10000) this.value = 10000;" />
             <button class="btn btn-secondary" @onclick="ResizeCanvas">
                 <i class="fas fa-expand-arrows-alt"></i> Redimensionar
             </button>
@@ -70,9 +70,9 @@
             <div class="file-list">
                 <!-- Main file -->
                 <div class="file-item main-file @(selectedFileIndex == -1 ? "selected" : "")"
-                     @onclick="() => SelectFile(-1)"
-                     @oncontextmenu="(e) => ShowContextMenu(e, -1)"
-                     @oncontextmenu:preventDefault="true">
+                @onclick="() => SelectFile(-1)"
+                @oncontextmenu="(e) => ShowContextMenu(e, -1)"
+                @oncontextmenu:preventDefault="true">
                     <i class="fas fa-file-code"></i>
                     <span class="file-name">@(mainFile?.Name ?? "Sin archivo")</span>
                     @if (mainFile?.HasUnsavedChanges == true)
@@ -87,9 +87,9 @@
                     var index = i;
                     var file = scriptFiles[i];
                     <div class="file-item @(selectedFileIndex == index ? "selected" : "")"
-                         @onclick="() => SelectFile(index)"
-                         @oncontextmenu="(e) => ShowContextMenu(e, index)"
-                         @oncontextmenu:preventDefault="true">
+                    @onclick="() => SelectFile(index)"
+                    @oncontextmenu="(e) => ShowContextMenu(e, index)"
+                    @oncontextmenu:preventDefault="true">
                         <i class="fas fa-file-alt"></i>
                         <span class="file-name">@file.Name</span>
                         @if (file.HasUnsavedChanges)
@@ -116,10 +116,10 @@
 
                 <div class="code-editor">
                     <textarea @bind="currentFileContent"
-                              @oninput="OnCodeChange"
-                              class="editor-textarea"
-                              spellcheck="false"
-                              placeholder="Selecciona un archivo para editarlo..."></textarea>
+                    @oninput="OnCodeChange"
+                    class="editor-textarea"
+                    spellcheck="false"
+                    placeholder="Selecciona un archivo para editarlo..."></textarea>
                 </div>
             </div>
 
@@ -140,7 +140,7 @@
                 </div>
 
                 <div class="canvas-viewport">
-                    <img src="@originalImageDataUrl" alt="Canvas Imagen" />
+                    <img style="object-fit: contain; width: 100%; max-width: 100%; height: auto; max-height: 100%; text-align: center; " src="@originalImageDataUrl" alt="Canvas Imagen" />
                 </div>
             </div>
         </div>

@@ -101,9 +101,5 @@ document.addEventListener('contextmenu', function(event) {
     }
 });
 
-window.syncScroll = (lineNumbers, editorContent) => {
-    editorContent.addEventListener('scroll', () => {
-        lineNumbers.scrollTop = editorContent.scrollTop;
-    });
-};
+
 

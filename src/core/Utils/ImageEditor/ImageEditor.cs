@@ -57,7 +57,7 @@ namespace Core.Utils.ImageEditor
             image = new Image<Rgba32>(Width, Height, (Color)color);
         }
 
-        public void ImageLoad(out ExecutionError? error, int height = 0, int width = 0)
+        public void ImageLoad(out ExecutionError? error, int width = 0, int height = 0)
         {
             if (width <= 0) width = Width;
             if (height <= 0) height = Height;

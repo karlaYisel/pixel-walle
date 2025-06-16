@@ -32,14 +32,11 @@ namespace WebApp.Components.Pages
         private int contextMenuFileIndex = -1;
 
         private string originalImageDataUrl = "";
-        private int canvasWidth = 0;
-        private int canvasHeight = 0;
+        private int canvasWidth = 64;
+        private int canvasHeight = 64;
         private int delayMs = 0;
         private BrushType selectedBrushType = BrushType.Square;
         private ColorType selectedColorType = ColorType.Solid;
-
-        private ElementReference lineNumbersRef;
-        private ElementReference editorContentRef;
         
 
         public class CodeFile
@@ -67,20 +64,14 @@ namespace WebApp.Components.Pages
             LoadCurrentFileContent();
 
             controller.SetDelay(delayMs);
-            await ResizeCanvas();
         }
-
-        /*protected override async Task OnAfterRenderAsync(bool firstRender)
-        {
-            if (firstRender)
-            {
-                await JSRuntime.InvokeVoidAsync("syncScroll", lineNumbersRef, editorContentRef);
-            }
-        }*/
 
         private async Task LoadImageToCanvas()
         {
             originalImageDataUrl = $"data:image/png;base64,{Convert.ToBase64String(controller.GetImage())}";
+
+            await Task.Delay(10); 
+
             StateHasChanged();
             await Task.Yield();
         }
