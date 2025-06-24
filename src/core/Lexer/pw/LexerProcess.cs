@@ -87,9 +87,6 @@ namespace Core.Lexer.pw
                     continue;
                 }
 
-                if (MatchKeyword(stream, tokens, errors, Location))
-                    continue;
-
                 if (stream.ReadID(out value))
                 {
                     tokens.Add(new Token(value, TokenType.Identifier, Location));
@@ -106,6 +103,9 @@ namespace Core.Lexer.pw
                 }
 
                 if (MatchString(stream, tokens, errors, Location))
+                    continue;
+
+                if (MatchKeyword(stream, tokens, errors, Location))
                     continue;
 
                 var unkOp = stream.ReadAny();
