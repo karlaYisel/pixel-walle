@@ -4,15 +4,19 @@ using Core.Utils.Error;
 
 namespace Core.PixelWallE
 {
+    public delegate Task CanvasChanged();
     public interface IPixelWallE
     {
-        void SetDelay(int delay);
+        Task CanvasHasChanged();
+        void AddCanvasChangedListener(CanvasChanged listener);
 
         byte[] GetImage();
 
-        void SetImage(byte[] img);
+        Task SetImage(byte[] img);
 
-        void ImageLoad(out ExecutionError? error, int x, int y);
+        Task<ExecutionError?> ImageLoad(ExecutionError? error, int x, int y);
+
+        Task<ExecutionError?> ImageLoad(ExecutionError? error, System.Drawing.Color color);
 
         void MoveTo(out ExecutionError? error, int x, int y);
 
@@ -54,18 +58,26 @@ namespace Core.PixelWallE
 
         ColorType GetColorType(out ExecutionError? error);
 
+        void SetAnimationType(out ExecutionError? error, AnimationType type);
+
+        AnimationType GetAnimationType(out ExecutionError? error);
+
         void SetColorType(out ExecutionError? error, ColorType type);
 
-        void DrawPixel(out ExecutionError? error, int? x = null, int? y = null);
+        Task<ExecutionError?> DrawPixel(ExecutionError? error, int? x = null, int? y = null);
 
-        void DrawPoint(out ExecutionError? error, int? x = null, int? y = null, List<(int x, int y)>? pixels = null);
+        Task<ExecutionError?> DrawPoint(ExecutionError? error, int? x = null, int? y = null, HashSet<(int x, int y)>? pixels = null);
 
-        void DrawLine(out ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true);
+        Task<ExecutionError?> DrawLine(ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true);
 
-        void DrawCircle(out ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true);
+        Task<ExecutionError?> DrawCircle(ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true);
 
-        void DrawRectangle(out ExecutionError? error, int xDir, int yDir, int distance, int width, int height, int? x = null, int? y = null, bool changeWallEPos = true);
+        Task<ExecutionError?> DrawFullCircle(ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true);
 
-        void Fill(out ExecutionError? error, int? x = null, int? y = null, bool changeWallEPos = true);
+        Task<ExecutionError?> DrawRectangle(ExecutionError? error, int xDir, int yDir, int distance, int width, int height, int? x = null, int? y = null, bool changeWallEPos = true);
+
+        Task<ExecutionError?> DrawFullRectangle(ExecutionError? error, int xDir, int yDir, int distance, int width, int height, int? x = null, int? y = null, bool changeWallEPos = true);
+
+        Task<ExecutionError?> Fill(ExecutionError? error, int? x = null, int? y = null, bool changeWallEPos = true);
     }
 }

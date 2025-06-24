@@ -15,12 +15,12 @@ namespace Core.Executor
     {
         private Program? _program;
         private PixelWallE.IPixelWallE? _wall; 
-        private Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>> SystemFunctions;
+        private Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], Task<(ExecutionError?, object)>>> SystemFunctions;
         private CanvasChanged? _canvasChanged;
 
         public Executor()
         {
-            SystemFunctions = new Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>>();
+            SystemFunctions = new Dictionary<string, Func<PixelWallE.IPixelWallE, object?[], Task<(ExecutionError?, object)>>>();
         }
 
         public void SetProgram(Program program)
@@ -28,14 +28,9 @@ namespace Core.Executor
             _program = program;
         }
 
-        public void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>? exp)
+        public void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], Task<(ExecutionError?, object)>>? exp)
         {
             if (exp is not null) SystemFunctions.Add(identifier, exp);
-        }
-
-        public void SetDelay(int delay)
-        {
-            if (_wall is not null) _wall.SetDelay(delay);
         }
 
         public void SetColorType(ColorType type)
@@ -50,9 +45,16 @@ namespace Core.Executor
             if (_wall is not null) _wall.SetBrushType(out er, type);
         }
 
-        public void SetWallE(PixelWallE.IPixelWallE WallE)
+        public void SetAnimationType(AnimationType type)
         {
+            ExecutionError? er;
+            if (_wall is not null) _wall.SetAnimationType(out er, type);
+        }
+
+        public void SetWallE(PixelWallE.IPixelWallE WallE)
+        { 
             _wall = WallE;
+            _wall.AddCanvasChangedListener(CanvasHasChanged);
         }
 
         public async Task<ExecutionError?> ExecuteCode(ExecutionError? error, CancellationToken cancellationToken)
@@ -104,7 +106,6 @@ namespace Core.Executor
                     error = go.Item2;
                     if (go.Item1)
                     {
-                        await CanvasHasChanged();
                         continue;
                     }
                 }
@@ -120,18 +121,15 @@ namespace Core.Executor
                     {
                         error = new ExecutionError(ErrorCode.InvalidReturnType, "Return type not void");
                     }
-                    await CanvasHasChanged();
                     return error;
                 }
 
                 if (error is not null)
                 {
                     _program.Context.ExitScope();
-                    await CanvasHasChanged();
                     return error;
                 }
 
-                await CanvasHasChanged();
                 code.MoveNext(1);
             }
             return error;
@@ -202,7 +200,6 @@ namespace Core.Executor
                     error = go.Item2;
                     if (go.Item1)
                     {
-                        await CanvasHasChanged();
                         continue;
                     }
                 }
@@ -223,22 +220,18 @@ namespace Core.Executor
                     if (script.ReturnType == typeof(System.Drawing.Color)) return ((System.Drawing.Color)result, error);
                     if (script.ReturnType == typeof(string))
                     {
-                        await CanvasHasChanged();
                         return ((result is System.Drawing.Color col)? col.Name: (string)result, error);
                     }
                     error = new ExecutionError(ErrorCode.InvalidReturnType, "Return type not defined");
-                    await CanvasHasChanged();
                     return (Core.Utils.SystemClass.Void.Value, error);
                 }
 
                 if (error is not null)
                 {
                     _program.Context.ExitScope();
-                    await CanvasHasChanged();
                     return (Core.Utils.SystemClass.Void.Value, error);
                 }
 
-                await CanvasHasChanged();
                 script.MoveNext(1);
             }
             if (script.ReturnType != typeof(Core.Utils.SystemClass.Void)) error = new ExecutionError(ErrorCode.InvalidReturnType, "Script finished without return");
@@ -317,10 +310,9 @@ namespace Core.Executor
                         var res = await EvaluateExpression(func.Arguments[i], error, cancellationToken);
                         values[i] = res.Item1;
                         error = res.Item2;
-                        await CanvasHasChanged();
                         if (error is not null) return (error, result);
                     }
-                    var re = SystemFunctions[func.Identifier].Invoke(_wall, [error, .. values]);
+                    var re = await SystemFunctions[func.Identifier].Invoke(_wall, [error, .. values]);
                     error = re.Item1;
                     result = re.Item2;
                     return (error, result);
@@ -328,13 +320,11 @@ namespace Core.Executor
                 catch (Exception ex) when (ex is InvalidCastException or IndexOutOfRangeException or NullReferenceException)
                 {
                     error = new ExecutionError(ErrorCode.UnexpectedError, $"System function error: {ex.Message}");
-                    await CanvasHasChanged();
                     return (error, result);
                 }
                 catch (Exception ex)
                 {
                     error = new ExecutionError(ErrorCode.UnexpectedError, $"Function unexpected exeption: {ex.Message}");
-                    await CanvasHasChanged();
                     return (error, result);
                 }
             }

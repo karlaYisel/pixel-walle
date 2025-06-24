@@ -141,6 +141,11 @@ namespace Core.Parser.pw
         {
             TokenReader stream = new TokenReader(code, errors);
 
+            if(program is Script && !stream.CheckValidIdentifier(program.Name))
+            {
+                errors.Add(new CompilingError(new CodeLocation { File = program.Name }, ErrorCode.Invalid, "Script name can not be a reserved word"));
+            }
+
             while (code.CanLookAhead(1))
             {
                 ASTNodeBase? node = null;
@@ -175,6 +180,8 @@ namespace Core.Parser.pw
                 {
                     if(program.IsLabel(label))
                         errors.Add(new CompilingError(location, ErrorCode.Invalid, "Label already defined"));
+                    if(!stream.CheckValidIdentifier(label)) 
+                        errors.Add(new CompilingError(location, ErrorCode.Invalid, "Label identifier can not be a reserved word"));
                     program.AddLabel(label);
                     continue;
                 }
@@ -215,7 +222,7 @@ namespace Core.Parser.pw
             {
                 goTo = null;
                 if (!stream.Next(TokenType.Identifier)) return false;
-                if (!(stream.LookAhead().Value == "Goto" || stream.LookAhead().Value == "GoTo") || !stream.Next(TokenValues.OpenBraces))
+                if (!(stream.LookAhead().Value == "Goto" || stream.LookAhead().Value == "GoTo" || stream.LookAhead().Value == "goto") || !stream.Next(TokenValues.OpenBraces))
                 {
                     stream.MoveBack(1);
                     return false;
@@ -231,6 +238,17 @@ namespace Core.Parser.pw
                 if (!stream.Next(TokenValues.ClosedBracket)) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, ")"));
                 ParseStatementSeparator(errors);
                 goTo = go;
+                return true;
+            }
+
+            public bool CheckValidIdentifier(string identifier)
+            {
+                if (types.ContainsKey(identifier)
+                    ||identifier == "return"
+                    ||identifier == "Goto"
+                    ||identifier == "GoTo"
+                    ||identifier == "goto"
+                    ||Enum.IsDefined(typeof(FunctionIdentifier), identifier)) return false;
                 return true;
             }
 
@@ -255,6 +273,7 @@ namespace Core.Parser.pw
                     return false;
                 }
                 Assign assign = new Assign(stream.LookAhead(-1).Location, identifier);
+                if(!CheckValidIdentifier(assign.Identifier)) errors.Add(new CompilingError(assign.Location, ErrorCode.Invalid, "Variable name can not be a reserved word"));
                 Expression? exp = ParseExpression(errors);
                 if (exp is null) errors.Add(new CompilingError(stream.LookAhead().Location, ErrorCode.Expected, "Valid Expression"));
                 else if (exp is Literal<System.Drawing.Color> exps) exp = new Literal<string>(exps.Evaluate().Name, exps.Location);

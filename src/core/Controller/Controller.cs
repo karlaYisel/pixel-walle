@@ -25,21 +25,22 @@ namespace Core.Controller
     {
         private LanguageServiceSelector lexerSelector;
         private ImageEditorSelector editorSelector;
-        private int delay;
         private CanvasChanged? change;
 
         public Controller()
         {
+            LexerAnalyser lex = new LexerAnalyser();
             var lexers = new Dictionary<string, ILexerAnalyser>
             {
-                { "pw", new LexerAnalyser() },
-                { "pwscript", new LexerAnalyser() }
+                { "pw", lex },
+                { "pwscript", lex }
             };
 
+            ParserAnalyser par = new ParserAnalyser();
             var parsers = new Dictionary<string, IParserAnalyser>
             {
-                { "pw", new ParserAnalyser() },
-                { "pwscript", new ParserAnalyser() }
+                { "pw", par },
+                { "pwscript", par }
             };
 
             ExecutionError? error;
@@ -61,11 +62,6 @@ namespace Core.Controller
         public void AddCanvasChangedListener(CanvasChanged listener)
         {
             change += listener;
-        }
-
-        public void SetDelay(int delay)
-        {
-            this.delay = delay;
         }
 
         public Program Compile(string CodePath, string CodeContent, string[] ScriptsPath, string[] ScriptsContent, out List<CompilingError> errors)
@@ -175,7 +171,7 @@ namespace Core.Controller
             return program;
         }
 
-        private async Task<ExecutionError?> Execute(Program program, ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        private async Task<ExecutionError?> Execute(Program program, ExecutionError? error, ColorType color, BrushType brush, AnimationType animation, CancellationToken cancel, string path = "img.png")
         {
             error = null;
             IExecutorAnalyser exAny = new Executor.ExecutorAnalyser();
@@ -193,13 +189,12 @@ namespace Core.Controller
                     break;
             }
 
-            ex.SetDelay(delay);
             ex.SetColorType(color);
             ex.SetBrushType(brush);
+            ex.SetAnimationType(animation);
             ex.SetProgram(program);
 
             error = await ex.ExecuteCode(error, cancel);
-            await CanvasHasChanged();
             return error;
         }
 
@@ -210,8 +205,7 @@ namespace Core.Controller
 
             pw = editorSelector.GetEditor("png");
 
-            pw.ImageLoad(out error, Width, Height);
-            await CanvasHasChanged();
+            error = await pw.ImageLoad(error, Width, Height);
             return error;
         }
 
@@ -224,18 +218,17 @@ namespace Core.Controller
         public async Task SetImage(byte[] img)
         {
             IPixelWallE pw = editorSelector.GetEditor("png");
-            pw.SetImage(img);
-            await CanvasHasChanged();
+            await pw.SetImage(img);
         }
 
-        public async Task<(ExecutionError? error, List<CompilingError> errors)> Run(string CodePath, string CodeContent, string[] ScriptsPath, string[] ScriptsContent, List<CompilingError> errors, ExecutionError? error, ColorType color, BrushType brush, CancellationToken cancel, string path = "img.png")
+        public async Task<(ExecutionError? error, List<CompilingError> errors)> Run(string CodePath, string CodeContent, string[] ScriptsPath, string[] ScriptsContent, List<CompilingError> errors, ExecutionError? error, ColorType color, BrushType brush, AnimationType animation, CancellationToken cancel, string path = "img.png")
         {
             error = null;
             Program program = Compile(CodePath, CodeContent, ScriptsPath, ScriptsContent, out errors);
 
             if (errors.Count() > 0) return (error, errors);
 
-            error = await Execute(program, error, color, brush, cancel, path);
+            error = await Execute(program, error, color, brush, animation, cancel, path);
             return (error, errors);
         }
 

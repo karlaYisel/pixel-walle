@@ -19,9 +19,12 @@ namespace WebApp.Components.Pages
         private List<CodeFile> scriptFiles = new List<CodeFile>();
         private int selectedFileIndex = -1;
 
+        private string monacoLanguage = "pw"; 
+        private string monacoTheme = "vs-dark";
+
         private string currentFileContent = "";
         private List<CompilingError> compilingErrors = new List<CompilingError>();
-        private string? executionErrorMessage;
+        private ExecutionError? executionError;
 
         private bool isRunning = false;
         private bool hasErrors = false;
@@ -34,10 +37,10 @@ namespace WebApp.Components.Pages
         private string originalImageDataUrl = "";
         private int canvasWidth = 64;
         private int canvasHeight = 64;
-        private int delayMs = 0;
         private BrushType selectedBrushType = BrushType.Square;
         private ColorType selectedColorType = ColorType.Solid;
-        
+        private AnimationType selectedAnimationType = AnimationType.Animation;
+
 
         public class CodeFile
         {
@@ -61,9 +64,25 @@ namespace WebApp.Components.Pages
                 Content = "Spawn(0, 0)",
                 IsScript = false
             };
-            LoadCurrentFileContent();
+        }
 
-            controller.SetDelay(delayMs);
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender)
+            {
+                await JSRuntime.InvokeVoidAsync("MonacoEditorInterop.initMonaco",
+                    "monaco-editor-container",
+                    currentFileContent,
+                    monacoLanguage,
+                    monacoTheme);
+
+                await JSRuntime.InvokeVoidAsync("MonacoEditorInterop.onContentChange",
+                    "monaco-editor-container",
+                    DotNetObjectReference.Create(this),
+                    "UpdateCurrentFileContent");
+
+                LoadCurrentFileContent();
+            }
         }
 
         private async Task LoadImageToCanvas()
@@ -76,11 +95,6 @@ namespace WebApp.Components.Pages
             await Task.Yield();
         }
 
-        private void UpdateDelay()
-        {
-            controller.SetDelay(delayMs);
-        }
-
         private async Task ResizeCanvas()
         {
             try
@@ -90,7 +104,7 @@ namespace WebApp.Components.Pages
 
                 if (error != null)
                 {
-                    executionErrorMessage = error.Argument;
+                    executionError = error;
                 }
 
                 await Task.Delay(100);
@@ -98,7 +112,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to resize canvas: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to resize canvas: {ex.Message}");
                 StateHasChanged();
             }
         }
@@ -113,7 +127,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tried to load canvas: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tried to load canvas: {ex.Message}");
                 StateHasChanged();
             }
         }
@@ -123,7 +137,7 @@ namespace WebApp.Components.Pages
         {
             if (string.IsNullOrEmpty(dataUrl))
             {
-                executionErrorMessage = $"Error when tryed to load canvas: Empty reference";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to load canvas: Empty reference");
                 StateHasChanged();
             }
 
@@ -142,7 +156,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to download canvas: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to download canvas: {ex.Message}");
                 StateHasChanged();
             }
         }
@@ -156,7 +170,7 @@ namespace WebApp.Components.Pages
 
                 if (error != null)
                 {
-                    executionErrorMessage = $"Error when tryed to clean canvas: {error.Argument}";
+                    executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to clean canvas: {error.Argument}");
                 }
 
                 await LoadImageToCanvas();
@@ -164,7 +178,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to clean canvas: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to clean canvas: {ex.Message}");
                 await LoadImageToCanvas();
                 StateHasChanged();
             }
@@ -177,7 +191,7 @@ namespace WebApp.Components.Pages
 
         private void CloseExecutionError()
         {
-            executionErrorMessage = null;
+            executionError = null;
         }
 
         private void SelectFile(int index)
@@ -187,19 +201,40 @@ namespace WebApp.Components.Pages
             LoadCurrentFileContent();
         }
 
-        private void LoadCurrentFileContent()
+        private async void LoadCurrentFileContent()
         {
+            string newContent = "";
             if (selectedFileIndex == -1)
             {
-                currentFileContent = mainFile?.Content ?? "";
+                newContent = mainFile?.Content ?? "";
             }
             else if (selectedFileIndex < scriptFiles.Count)
             {
-                currentFileContent = scriptFiles[selectedFileIndex].Content;
+                newContent = scriptFiles[selectedFileIndex].Content;
             }
             else
             {
-                currentFileContent = "";
+                newContent = "";
+            }
+
+            currentFileContent = newContent; 
+            if (JSRuntime != null)
+            {
+                await JSRuntime.InvokeVoidAsync("MonacoEditorInterop.setValue", "monaco-editor-container", currentFileContent);
+            }
+        }
+
+        [JSInvokable]
+        public void UpdateCurrentFileContent(string newContent)
+        {
+            if (currentFileContent != newContent)
+            {
+                currentFileContent = newContent;
+                SaveCurrentFileContent();
+                if (!isRunning)
+                {
+                    CompileCode();
+                }
             }
         }
 
@@ -231,18 +266,6 @@ namespace WebApp.Components.Pages
             if (selectedFileIndex < scriptFiles.Count)
                 return scriptFiles[selectedFileIndex].Name;
             return "Not File";
-        }
-
-        private async Task OnCodeChange(ChangeEventArgs e)
-        {
-            currentFileContent = e.Value?.ToString() ?? "";
-            SaveCurrentFileContent();
-
-            await Task.Delay(500);
-            if (!isRunning)
-            {
-                CompileCode();
-            }
         }
 
         private void ShowContextMenu(MouseEventArgs e, int fileIndex)
@@ -303,7 +326,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to create a new file: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to create a new file: {ex.Message}");
                 StateHasChanged();
             }
             finally
@@ -360,7 +383,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Erron when tryed to replace file: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Erron when tryed to replace file: {ex.Message}");
                 StateHasChanged();
             }
             finally
@@ -414,7 +437,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tried to remove script: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tried to remove script: {ex.Message}");
                 StateHasChanged();
             }
             finally
@@ -444,7 +467,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to create a new file: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to create a new file: {ex.Message}");
                 StateHasChanged();
             }
             finally
@@ -506,7 +529,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to replace file: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to replace file: {ex.Message}");
                 StateHasChanged();
             }
             finally
@@ -550,7 +573,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to download file: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to download file: {ex.Message}");
                 StateHasChanged();
             }
         }
@@ -567,7 +590,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Error when tryed to save file: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Error when tryed to save file: {ex.Message}");
                 StateHasChanged();
             }
         }
@@ -595,7 +618,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Unexpected erron in compiling time: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Unexpected erron in compiling time: {ex.Message}");
                 StateHasChanged();
             }
         }
@@ -621,6 +644,7 @@ namespace WebApp.Components.Pages
                     null,
                     selectedColorType,
                     selectedBrushType,
+                    selectedAnimationType,
                     cancellationTokenSource.Token
                 );
 
@@ -628,7 +652,7 @@ namespace WebApp.Components.Pages
 
                 if (er.error != null)
                 {
-                    executionErrorMessage = er.error.Argument;
+                    executionError = er.error;
                 }
             }
             catch (OperationCanceledException)
@@ -637,7 +661,7 @@ namespace WebApp.Components.Pages
             }
             catch (Exception ex)
             {
-                executionErrorMessage = $"Execution Error: {ex.Message}";
+                executionError = new ExecutionError(ErrorCode.UnableToExecuteFuntion, $"Execution Error: {ex.Message}");
             }
             finally
             {
@@ -657,22 +681,6 @@ namespace WebApp.Components.Pages
         public void Dispose()
         {
             cancellationTokenSource?.Dispose();
-        }
-
-        private int GetLineCount(string content)
-        {
-            if (string.IsNullOrEmpty(content))
-                return 1;
-
-            return content.Split('\n').Length;
-        }
-
-        private string[] GetLines(string content)
-        {
-            if (string.IsNullOrEmpty(content))
-                return new[] { "" };
-
-            return content.Split('\n');
         }
     }
 }

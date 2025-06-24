@@ -16,13 +16,13 @@ namespace Core.Executor
         void AddCanvasChangedListener(CanvasChanged listener);
         void SetProgram(Program program);
 
-        void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], (ExecutionError?, object)>? exp);
-
-        void SetDelay(int delay);
+        void AddSystemFunction(string identifier, Func<PixelWallE.IPixelWallE, object?[], Task<(ExecutionError?, object)>>? exp);
 
         void SetColorType(ColorType type);
 
         void SetBrushType(BrushType type);
+
+        void SetAnimationType(AnimationType type);
 
         void SetWallE(PixelWallE.IPixelWallE WallE);
 

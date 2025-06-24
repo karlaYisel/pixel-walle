@@ -74,18 +74,14 @@ window.selectImageFile = function (dotNetRef) {
     input.click();
 };
 
-// Agregar este JavaScript a tu página o archivo JS
 document.addEventListener('click', function(event) {
-    // Si el clic no es en el menú contextual, cerrarlo
     if (!event.target.closest('.context-menu')) {
-        // Llamar al método de Blazor para cerrar el menú
         if (typeof DotNet !== 'undefined') {
             DotNet.invokeMethodAsync('WebApp', 'CloseContextMenuFromJS');
         }
     }
 });
 
-// También cerrar con Escape
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         if (typeof DotNet !== 'undefined') {
@@ -94,7 +90,6 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// Prevenir el menú contextual del navegador en toda la aplicación (opcional)
 document.addEventListener('contextmenu', function(event) {
     if (event.target.closest('.file-item')) {
         event.preventDefault();

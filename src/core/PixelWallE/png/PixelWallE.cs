@@ -2,7 +2,7 @@
 using System.Drawing;
 using Core.Utils.Error;
 using System.Numerics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.ComponentModel;
 
 namespace Core.PixelWallE.png
 {
@@ -15,7 +15,19 @@ namespace Core.PixelWallE.png
         private int brushSize;
         private BrushType brushType;
         private ColorType colorType;
-        private int delay;
+        private AnimationType animationType;
+        private CanvasChanged? _canvasChanged;
+
+        public async Task CanvasHasChanged()
+        {
+            if (_canvasChanged != null)
+                await _canvasChanged.Invoke();
+        }
+
+        public void AddCanvasChangedListener(CanvasChanged listener)
+        {
+            _canvasChanged += listener;
+        }
 
         public PixelWallE(out ExecutionError? error, string? path = null)
         {
@@ -25,11 +37,7 @@ namespace Core.PixelWallE.png
             brushSize = 1;
             brushType = BrushType.Square;
             colorType = ColorType.Solid;
-        }
-
-        public void SetDelay(int delay)
-        {
-            this.delay = delay;
+            animationType = AnimationType.Animation;
         }
 
         public byte[] GetImage()
@@ -37,19 +45,31 @@ namespace Core.PixelWallE.png
             return image.GetImage();
         }
 
-        public void SetImage(byte[] img)
+        public async Task SetImage(byte[] img)
         {
             image.SetImage(img);
+            await CanvasHasChanged();
         }
 
-        public void ImageLoad(out ExecutionError? error, int x, int y)
+        public async Task<ExecutionError?> ImageLoad(ExecutionError? error, int x, int y)
         {
             image.ImageLoad(out error, x, y);
+            await CanvasHasChanged();
+            return error;
         }
 
-        public void ImageLoad(out ExecutionError? error)
+        public async Task<ExecutionError?> ImageLoad(ExecutionError? error)
         {
             image.ImageLoad(out error, 0, 0);
+            await CanvasHasChanged();
+            return error;
+        }
+
+        public async Task<ExecutionError?> ImageLoad(ExecutionError? error, System.Drawing.Color color)
+        {
+            image.ImageLoad(out error, new SixLabors.ImageSharp.PixelFormats.Rgba32(color.R, color.G, color.B, color.A));
+            await CanvasHasChanged();
+            return error;
         }
 
         public void MoveTo(out ExecutionError? error, int x, int y)
@@ -205,12 +225,24 @@ namespace Core.PixelWallE.png
             colorType = type;
         }
 
-        public void DrawPixel(out ExecutionError? error, int? x = null, int? y = null)
+        public AnimationType GetAnimationType(out ExecutionError? error)
+        {
+            error = null;
+            return animationType;
+        }
+
+        public void SetAnimationType(out ExecutionError? error, AnimationType type)
+        {
+            error = null;
+            animationType = type;
+        }
+
+        public async Task<ExecutionError?> DrawPixel(ExecutionError? error, int? x = null, int? y = null)
         {
             error = null;
             if (x is null) x = X;
             if (y is null) y = Y;
-            if (!IsInCanvas(out error, (int)x, (int)y)) return;
+            if (!IsInCanvas(out error, (int)x, (int)y)) return error;
             Color color = Color.FromArgb(0);
             switch(colorType)
             {
@@ -222,9 +254,11 @@ namespace Core.PixelWallE.png
                     break;
                 default:
                     error = new ExecutionError(ErrorCode.ColorTypeNotDefined, $"Unknow color type.");
-                    return;
+                    return error;
             }
             image.SetPixel((int)x, (int)y, new SixLabors.ImageSharp.PixelFormats.Rgba32(color.R, color.G, color.B, color.A));
+            if (animationType == AnimationType.Animation) await CanvasHasChanged();
+            return error;
         }
 
         private Color GetSolidColor(int x, int y)
@@ -241,12 +275,12 @@ namespace Core.PixelWallE.png
             return Color.FromArgb((brushColor.A + color.A)/2, (brushColor.A * brushColor.R + color.A * color.R) / (brushColor.A + color.A), (brushColor.A * brushColor.G + color.A * color.G) / (brushColor.A + color.A), (brushColor.A * brushColor.B + color.A * color.B) / (brushColor.A + color.A));
         }
 
-        public void DrawPoint(out ExecutionError? error, int? x = null, int? y = null, List<(int x, int y)>? pixels = null)
+        public async Task<ExecutionError?> DrawPoint(ExecutionError? error, int? x = null, int? y = null, HashSet<(int x, int y)>? visited = null)
         {
             error = null;
             if (x is null) x = X;
             if (y is null) y = Y;
-            if (pixels is null) pixels = new List<(int x, int y)>();
+            if (visited is null) visited = new HashSet<(int x, int y)>();
 
             List<(int x, int y)> point;
             switch (brushType)
@@ -259,16 +293,18 @@ namespace Core.PixelWallE.png
                     break;
                 default:
                     error = new ExecutionError(ErrorCode.ColorTypeNotDefined, $"Unknow brush type.");
-                    return;
+                    return error;
             }
             foreach (var pixel in point)
             {
-                if(!pixels.Contains(pixel))
+                if(!visited.Contains(pixel))
                 {
-                    pixels.Add(pixel);
-                    DrawPixel(out error, pixel.x, pixel.y);
+                    visited.Add(pixel);
+                    error = await DrawPixel(error, pixel.x, pixel.y);
                 }
             }
+            if (animationType == AnimationType.Points) await CanvasHasChanged();
+            return error;
         }
 
         private List<(int, int)> GetSquare(int x, int y)
@@ -292,10 +328,10 @@ namespace Core.PixelWallE.png
 
             int[] X = { 0, 0, 1, -1 };
             int[] Y = { 1, -1, 0, 0 };
-            List<(int x, int y)> innerPixels = new List<(int x, int y)>();
+            HashSet<(int x, int y)> visited = new HashSet<(int x, int y)>();
             Queue<(int x, int y)> positions = new Queue<(int x, int y)>();
             positions.Enqueue((x, y));
-            innerPixels.Add((x, y));
+            visited.Add((x, y));
             pixels.Add((x, y));
 
             (int x, int y) pos;
@@ -303,14 +339,14 @@ namespace Core.PixelWallE.png
             {
                 pos = positions.Dequeue();
 
-                if(((pos.x - x)^2 + (pos.y - y)^2) < ((brushSize/2)^2))
-                { 
-                    for(int i = 0; i < X.Length; i++)
+                if (((pos.x - x) * (pos.x - x) + (pos.y - y) * (pos.y - y)) < (brushSize * brushSize / 4))
+                {
+                    for (int i = 0; i < X.Length; i++)
                     {
-                        if(!innerPixels.Contains((pos.x + X[i], pos.y + Y[i])))
+                        if (!visited.Contains((pos.x + X[i], pos.y + Y[i])))
                         {
-                            innerPixels.Add((pos.x + X[i], pos.y + Y[i]));
-                            positions.Enqueue((pos.x + X[i], pos.y + Y[i]));
+                            visited.Add((pos.x + X[i], pos.y + Y[i])); 
+                            positions.Enqueue((pos.x + X[i], pos.y + Y[i])); 
                             if (IsInCanvas(out ExecutionError? error, pos.x + X[i], pos.y + Y[i])) pixels.Add((pos.x + X[i], pos.y + Y[i]));
                         }
                     }
@@ -320,7 +356,7 @@ namespace Core.PixelWallE.png
             return pixels;
         }
 
-        public void DrawLine(out ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true)
+        public async Task<ExecutionError?> DrawLine(ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true)
         {
             error = null;
             if (x is null) x = X;
@@ -330,19 +366,20 @@ namespace Core.PixelWallE.png
 
             (int x, int y) actualPosition = ((int)x, (int)y);
 
-            List<(int x, int y)> pixels = new List<(int x, int y)> ();
+            HashSet<(int x, int y)> pixels = new HashSet<(int x, int y)>();
             for (int i = 0; i < distance; i++)
             {
-                DrawPoint(out error, actualPosition.x + positions[i % positions.Count].x, actualPosition.y + positions[i % positions.Count].y, pixels);
+                error = await DrawPoint(error, actualPosition.x + positions[i % positions.Count].x, actualPosition.y + positions[i % positions.Count].y, pixels);
                 if ((i + 1) % positions.Count == 0) actualPosition = (actualPosition.x + xDir, actualPosition.y + yDir);
-                Thread.Sleep(delay);
             }
             error = null;
             if (distance % positions.Count != 0) actualPosition = (actualPosition.x + positions[distance % positions.Count].x, actualPosition.y + positions[distance % positions.Count].y);
             if (changeWallEPos) MoveTo(out error, actualPosition.x, actualPosition.y);
+            if (animationType == AnimationType.Steps) await CanvasHasChanged();
+            return error;
         }
 
-        public void DrawCircle(out ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true)
+        public async Task<ExecutionError?> DrawCircle(ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true)
         {
             error = null;
             if (x is null) x = this.X;
@@ -351,16 +388,16 @@ namespace Core.PixelWallE.png
 
             int[] X = { 0, 0, 1, -1 };
             int[] Y = { 1, -1, 0, 0 };
-            List<(int x, int y)> innerPixels = new List<(int x, int y)>();
+            HashSet<(int x, int y)> visited = new HashSet<(int x, int y)>();
             Queue<(int x, int y)> positions = new Queue<(int x, int y)>();
 
             List<(int x, int y)> distances;
             GetDir(ref xDir, ref yDir, out distances);
-            x = x + xDir *(distance/distances.Count) + distances[distance%distances.Count].x;
+            x = x + xDir * (distance / distances.Count) + distances[distance % distances.Count].x;
             y = y + yDir * (distance / distances.Count) + distances[distance % distances.Count].y;
 
             positions.Enqueue(((int)x, (int)y));
-            innerPixels.Add(((int)x, (int)y));
+            visited.Add(((int)x, (int)y));
 
             (int x, int y) pos;
             while (positions.Count > 0)
@@ -371,9 +408,9 @@ namespace Core.PixelWallE.png
                 {
                     for (int i = 0; i < X.Length; i++)
                     {
-                        if (!innerPixels.Contains((pos.x + X[i], pos.y + Y[i])))
+                        if (!visited.Contains((pos.x + X[i], pos.y + Y[i])))
                         {
-                            innerPixels.Add((pos.x + X[i], pos.y + Y[i]));
+                            visited.Add((pos.x + X[i], pos.y + Y[i]));
                             positions.Enqueue((pos.x + X[i], pos.y + Y[i]));
                         }
                     }
@@ -381,18 +418,72 @@ namespace Core.PixelWallE.png
                 else circle.Add((pos.x, pos.y));
             }
 
-            List<(int x, int y)> pixels = new List<(int x, int y)>();
+            HashSet<(int x, int y)> pixels = new HashSet<(int x, int y)>();
             foreach (var point in circle)
             {
-                DrawPoint(out error, point.x, point.y, pixels);
-                Thread.Sleep(delay);
+                error = await DrawPoint(error, point.x, point.y, pixels);
             }
 
             error = null;
-            if (changeWallEPos) MoveTo(out error, (int)x, (int)y);
+            if (changeWallEPos) 
+                MoveTo(out error, (int)x, (int)y);
+            if (animationType == AnimationType.Steps) await CanvasHasChanged();
+            return error;
         }
 
-        public void DrawRectangle(out ExecutionError? error, int xDir, int yDir, int distance, int width, int height, int? x = null, int? y = null, bool changeWallEPos = true)
+        public async Task<ExecutionError?> DrawFullCircle(ExecutionError? error, int xDir, int yDir, int distance, int? x = null, int? y = null, bool changeWallEPos = true)
+        {
+            error = null;
+            if (x is null) x = this.X;
+            if (y is null) y = this.Y;
+            List<(int x, int y)> circle = new List<(int x, int y)>();
+
+            int[] X = { 0, 0, 1, -1 };
+            int[] Y = { 1, -1, 0, 0 };
+            HashSet<(int x, int y)> visited = new HashSet<(int x, int y)>();
+            Queue<(int x, int y)> positions = new Queue<(int x, int y)>();
+
+            List<(int x, int y)> distances;
+            GetDir(ref xDir, ref yDir, out distances);
+            x = x + xDir * (distance / distances.Count) + distances[distance % distances.Count].x;
+            y = y + yDir * (distance / distances.Count) + distances[distance % distances.Count].y;
+
+            positions.Enqueue(((int)x, (int)y));
+            visited.Add(((int)x, (int)y));
+
+            (int x, int y) pos;
+            while (positions.Count > 0)
+            {
+                pos = positions.Dequeue();
+
+                if (((pos.x - x) * (pos.x - x) + (pos.y - y) * (pos.y - y)) < (distance * distance))
+                {
+                    for (int i = 0; i < X.Length; i++)
+                    {
+                        if (!visited.Contains((pos.x + X[i], pos.y + Y[i])))
+                        {
+                            visited.Add((pos.x + X[i], pos.y + Y[i]));
+                            positions.Enqueue((pos.x + X[i], pos.y + Y[i]));
+                        }
+                    }
+                }
+                circle.Add((pos.x, pos.y));
+            }
+
+            HashSet<(int x, int y)> pixels = new HashSet<(int x, int y)>();
+            foreach (var point in circle)
+            {
+                error = await DrawPoint(error, point.x, point.y, pixels);
+            }
+
+            error = null;
+            if (changeWallEPos)
+                MoveTo(out error, (int)x, (int)y);
+            if (animationType == AnimationType.Steps) await CanvasHasChanged();
+            return error;
+        }
+
+        public async Task<ExecutionError?> DrawRectangle(ExecutionError? error, int xDir, int yDir, int distance, int width, int height, int? x = null, int? y = null, bool changeWallEPos = true)
         {
             error = null;
             if (x is null) x = X;
@@ -414,26 +505,62 @@ namespace Core.PixelWallE.png
                     if (i == y - height /2 || i == y + height /2 || j == x - width /2 || j == x + width /2) rectangle.Add((j, i));
                 }
             }
-
-            List<(int x, int y)> pixels = new List<(int x, int y)>();
+            
+            HashSet<(int x, int y)> pixels = new HashSet<(int x, int y)>();
             foreach (var point in rectangle)
             {
-                DrawPoint(out error, point.x, point.y, pixels);
-                Thread.Sleep(delay);
+                error = await DrawPoint(error, point.x, point.y, pixels);
             }
 
             error = null;
             if (changeWallEPos) MoveTo(out error, (int)x, (int)y);
+            if (animationType == AnimationType.Steps) await CanvasHasChanged();
+            return error;
         }
 
-        public void Fill(out ExecutionError? error, int? x = null, int? y = null, bool changeWallEPos = true)
+        public async Task<ExecutionError?> DrawFullRectangle(ExecutionError? error, int xDir, int yDir, int distance, int width, int height, int? x = null, int? y = null, bool changeWallEPos = true)
+        {
+            error = null;
+            if (x is null) x = X;
+            if (y is null) y = Y;
+            List<(int x, int y)> rectangle = new List<(int x, int y)>();
+
+            List<(int x, int y)> distances;
+            GetDir(ref xDir, ref yDir, out distances);
+            x = x + xDir * (distance / distances.Count) + distances[distance % distances.Count].x;
+            y = y + yDir * (distance / distances.Count) + distances[distance % distances.Count].y;
+
+            width = width / 2 * 2 + 3;
+            height = height / 2 * 2 + 3;
+
+            for (int i = (int)y - height / 2; i <= (int)y + height / 2; i++)
+            {
+                for (int j = (int)x - width / 2; j <= (int)x + width / 2; j++)
+                {
+                    rectangle.Add((j, i));
+                }
+            }
+
+            HashSet<(int x, int y)> pixels = new HashSet<(int x, int y)>();
+            foreach (var point in rectangle)
+            {
+                error = await DrawPoint(error, point.x, point.y, pixels);
+            }
+
+            error = null;
+            if (changeWallEPos) MoveTo(out error, (int)x, (int)y);
+            if (animationType == AnimationType.Steps) await CanvasHasChanged();
+            return error;
+        }
+
+        public async Task<ExecutionError?> Fill(ExecutionError? error, int? x = null, int? y = null, bool changeWallEPos = true)
         {
             error = null;
             if (x is null) x = this.X;
             if (y is null) y = this.Y;
 
             int targetColor = GetCanvasColor(out error, (int)x, (int)y).ToArgb();
-            if (error is not null) return;
+            if (error is not null) return error;
 
             int[] X = { 0, 0, 1, -1 };
             int[] Y = { 1, -1, 0, 0 };
@@ -470,13 +597,15 @@ namespace Core.PixelWallE.png
 
             foreach (var point in fillPixels)
             {
-                DrawPixel(out error, point.x, point.y);
+                error = await DrawPixel(error, point.x, point.y);
                 if (error is not null) break;
-                Thread.Sleep(delay);
+                if (animationType == AnimationType.Points) await CanvasHasChanged();
             }
 
             if (changeWallEPos && error is null)
                 MoveTo(out error, (int)x, (int)y);
+            if (animationType == AnimationType.Steps) await CanvasHasChanged();
+            return error;
         }
 
         private void GetDir(ref int x, ref int y, out List<(int x, int y)> positions)

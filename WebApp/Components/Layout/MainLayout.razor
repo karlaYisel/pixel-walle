@@ -25,6 +25,11 @@
                 script.src = 'js/ideInterop.js';
                 document.body.appendChild(script);
             ");
+            JSRuntime.InvokeVoidAsync("eval", @"
+                var script = document.createElement('script');
+                script.src = 'js/monaco.js';
+                document.body.appendChild(script);
+            ");
         }
     }
 }
