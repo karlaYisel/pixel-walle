@@ -150,7 +150,7 @@
     <div class="console-container @(showConsole ? "expanded" : "collapsed")">
         <div class="console-header" @onclick="ToggleConsole">
             <i class="fas @(showConsole ? "fa-chevron-down" : "fa-chevron-up")"></i>
-            <span>Errors: (@compilingErrors.Count errores)</span>
+            <span>Errors: (@compilingErrors.Count errors)</span>
         </div>
 
         @if (showConsole)

@@ -210,11 +210,13 @@ namespace Core.Semantic
         private void CheckObjectAssign(ref List<Assign> objectAssign, Dictionary<string, Type> variables, Script[] scripts, List<CompilingError> errors, ProgramAST code)
         { 
             List<Assign> obj = new List<Assign>();
+            foreach (Assign assign in objectAssign) { obj.Add(assign); }
 
             Expression? exp = null;
             do
             {
-                foreach (Assign assign in objectAssign) { obj.Add(assign); }
+                objectAssign.Clear();
+                foreach (Assign assign in obj) { objectAssign.Add(assign); }
                 foreach (Assign asg in objectAssign)
                 {
                     if (asg.Expression is not Expression<object> obEx)
